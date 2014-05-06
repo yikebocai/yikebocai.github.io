@@ -5,7 +5,7 @@ categories:
 tags:
 ---
 
-在[维基百科](http://en.wikipedia.org/wiki/Java_(programming_language)对Java的描述是：`Java是一种通用的、并发的，基于类的面对对象编辑语言`，**并发**作为Java语言的一项重要特性被特别强调，并发也是Java高级开发人员的必备技能，在大型网站中尤其常用。虽然并发大的概念和基本原理都清楚，但并发的一些基本概念和具体细节并不太好撑握，我之前对这些东西理解的就不深，现在回过头来不得不补课。
+在[维基百科](http://en.wikipedia.org/wiki/Java_programming_language)对Java的描述是：`Java是一种通用的、并发的，基于类的面对对象编辑语言`，**并发**作为Java语言的一项重要特性被特别强调，并发也是Java高级开发人员的必备技能，在大型网站中尤其常用。虽然并发大的概念和基本原理都清楚，但并发的一些基本概念和具体细节并不太好撑握，我之前对这些东西理解的就不深，现在回过头来不得不补课。
 
 ## 一些基本概念
 计算机最初的时候是没有操作系统的，直接运行二进制程序并且只能是顺序执行，这个时候是不存在并发的概念。等到现代[操作系统](http://en.wikipedia.org/wiki/Operating_system)诞生之后，为了更好地利用计算机资源，并发才正式登上计算机的历史舞台。在维基百科中这样定义[并发](http://en.wikipedia.org/wiki/Concurrent_computing#Concurrent_programming_languages)：
@@ -87,6 +87,7 @@ The final counter is 987
 ```
 
 `inc()`方法里只有一句代码，看起来是原子的，但实际上这个加1的操作并不是原子操作，使用`javap -v`命令可以看到它的字节码其实有多条指令，如下所示：
+
 ```
 public void inc();
   Code:
@@ -105,6 +106,7 @@ public void inc();
 每条字节码指令我们可以把它看作是一个原子操作（严格意义上来说也不一定），当执行加1操作时，首先使用`getfield`指令将当前值推动栈顶，然后再使用`iadd`指令进行加1操作，最后使用`putfield`指令把计算后的值重新设置回去。如果一个线程执行`putfield`指令之前，另外一个线程已执行了`getfield`指令，那么虽然执行了两次加1操作，但实际上只增加了1。
 
 因此我们需要对这行代码做同步处理，Java中最常用的同步操作是使用同步关键词`synchronized`来实现，加上之后代码如下所示：
+
 ```java
 public synchronized void inc() {
 		counter++;
@@ -113,6 +115,7 @@ public synchronized void inc() {
 再进行测试，结果一定会是预期中的1000。
 
 这种在方法上加同步关键字的方式，如果是实例方式锁默认是加在实例对象上，如果是静态方法锁默认是加在类对象上的，不管是否访问的是同一实例只要调用同一方法都会同步，这在某些地方是没有必要的，比如把上面的例子修改一下，每个线程对自己的实例对象操作，是不需要进行同步操作的：
+
 ```java
 package org.bocai.concurrency;
 
@@ -180,6 +183,7 @@ counter  9 : 100
 ```
 
 另外一种使用同步关键词的方式是使用同步块，如果加锁对象是this，下面的效果和上面一样，比如：
+
 ```java
 	public  void inc() {
 		synchronized(this){
@@ -305,6 +309,7 @@ class LoadFileTask implements Callable<String> {
 ```
 
 使用`jstack pid`打印线程堆栈，可以看到两个线程在相当等待：
+
 ```
 "pool-1-thread-1" prio=5 tid=7ff5acaa1800 nid=0x1166a5000 waiting on condition [1166a4000]
    java.lang.Thread.State: WAITING (parking)
