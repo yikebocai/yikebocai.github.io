@@ -10,6 +10,7 @@ Tag:Clojure
 > *原文写于 2012-8-25*
 
 **1.不同集合的表示形式** 
+
 ```clojure
 '(a b :name 12.5) 
 ;;list
@@ -24,6 +25,7 @@ Tag:Clojure
 ```
 
 **2.对集合的操作,可以看到集合是不可变的** 
+
 ```clojure
 user=> (def v [1 2 3])
 #'user/v
@@ -78,6 +80,7 @@ Collection Sequence Associative Indexed Stack Set Sorted
 所有的集合都有如下几种操作: conj:把一个或多个元素添加到一个集合中 seq:获取一个集合的序列 count:获取集合中元素的数量 empty:定义一个同类型的空集合实例 =:比较两个集合中的值是否相同 
 
 **5.Sequence** 
+
 ```clojure
 ;;创建一个序列
 user=> (cons 1 (range 1 5))
@@ -91,6 +94,7 @@ user=> (list* :a [:b :c])
 
 **6.Associative** 
 assoc:把一个key/value和一个集合合并 dissoc:从集合中移除 get:取指定key的value值 contains:判断集合中是否包含某个key/value 
+
 ```clojure
 user=> (def m {:a 1,:b 2, :c 3})
 #'user/m
@@ -109,6 +113,7 @@ true
 ```
 
 **7.Indexed** 
+
 ```clojure
 user=> (nth [:a :b :c] 2)
 :c
@@ -122,6 +127,7 @@ nil
 
 **8.Stack** 
 conj:push进去一个值 pop：移除最顶端的一个值 peek：取最顶端的一个值 
+
 ```clojure
 user=> (conj '() 1)
 (1)
@@ -134,6 +140,7 @@ user=> (pop '(2 3 1))
 ```
 
 **9.Set** 
+
 ```clojure
 user=> (get #{1 3 4} 2)
 nil
@@ -145,6 +152,7 @@ user=> (disj #{1 2 3} 3 1)
 ```
 
 **10.Sorted** 
+
 ```clojure
 user=> (def sm (sorted-map :z 5  :y 0 :b 2 :a 3 :c 4))
 #'user/sm

@@ -18,6 +18,7 @@ tags:
 
 
 **3.Collection** 
+
 ```clojure
 ;读取容器Vector中的数据
 user=> (def v [42 "foo" 99.2 [5 12]])
@@ -63,6 +64,7 @@ user=> (let [[name {bd :birthday}] mv]
 ```
 
 **4.Comments** 有两种方式，注释掉一代用分号(;)，注释掉一个clojure的表式用#_，比如： 
+
 ```clojure
 ;注释掉其中的(* 2 2)
 user=> (read-string "(+ 1 2 #_(* 2 2) 8)")
@@ -72,6 +74,7 @@ user=> (read-string "(+ 1 2 #_(* 2 2) 8)")
 **5.Namespace** 
 
 默认的namespace是user，可以用\*ns\*来查看当前的namespace，也可自己指定使用哪个 
+
 ```clojure
 user=> *ns*
 #<Namespace user>
@@ -82,6 +85,7 @@ myNS=> *ns*
 ```
 
 **6.do** 
+
 ```clojure
 ;do表示按次序执行clojure表达式
 user=> (do (println "hi") (apply * [4 5 6]))
@@ -90,6 +94,7 @@ hi
 ```
 
 **7.def** 
+
 ```clojure
 user=> (def p "foo")
 #'user/p
@@ -98,6 +103,7 @@ user=> p
 ```
 
 **8.let** 
+
 ```clojure
 ;定义一个本地变量，或者说绑定（* x x）到x2这个变量上
 user=> (defn hypot
@@ -113,6 +119,7 @@ user=> (+ (first v) (first (last v)))
 ```
 
 **9.自定义函数fn** 
+
 ```clojure
 ;使用内嵌函数进行加法运算
 user=> ((fn [x] (+ 10 x)) 5)
@@ -123,6 +130,7 @@ user=> (let [x 8] (+ 10 x))
 ```
 
 **10.loop & recur** 
+
 ```clojure
 ;循环递减打印每一个值，直到负数为止
 user=> (loop [x 5] (if(neg? x) "STOP" (do (println x) (recur (dec x)))))
