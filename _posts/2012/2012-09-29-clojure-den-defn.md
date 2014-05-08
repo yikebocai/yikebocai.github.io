@@ -6,6 +6,7 @@ tags:
 ---
 
 def只评估一次，而defn每次执行都会评估，我的理解是def相当于java中的field声明，而defn相当于java中的method定义,看下面的例子： 
+
 ```clojure
 user=> (def t1 (rand 10))
 #'user/t1
@@ -27,6 +28,7 @@ user=> (t2)
 ``` 
 
 但是如果def后面跟上了fn匿名函数，那么结果和defn是一样的 
+
 ```clojure
 user=> (def t3 (fn [] (rand 10)))
 #'user/t3 

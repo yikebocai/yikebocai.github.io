@@ -115,6 +115,7 @@ IP地址在互联网上被广泛使用，用来判定用户所在国家、地区
 </table> 
 
 使用<a href="http://nmap.org" target="_blank">Nmap</a>探测我的一台装有Windows XP操作系统的笔记本 
+
 ```
 xxx@desktop:~$ sudo nmap -O -v 10.19.214.97
 
@@ -157,6 +158,7 @@ Nmap done: 1 IP address (1 host up) scanned in 9.12 seconds
 ```
 
 探测一个<a href="http://www.ip-adress.com/proxy_list/" target="_blank">IP-Address网站公布</a>的代理IP 
+
 ```
 xxx@desktop:~$ sudo nmap -O -v 174.34.243.140
 [sudo] password for simbo: 

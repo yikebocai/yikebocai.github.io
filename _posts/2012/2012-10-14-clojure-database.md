@@ -8,6 +8,7 @@ tags:
 数据库是应用程序中使用最频繁的东东，clojure中简化了数据库的操作，几行代码就可以实现对数据库的操作。
 
 首先，我们要下载clojure的一个数据级组件，实现了对jdbc的封装，叫<a href="https://github.com/clojure/java.jdbc" target="_blank">clojure/java.jdbc</a>，以前的名称叫作clojure.contrib.sql，因为没有直接打包好的jar包，因此需求我们自己Git下载进行编译。如果没有安装Git，首先下载<a href="http://msysgit.github.com/" target="_blank">Git fow Windows</a>并安装Git，然后在命令行下运行Git下载源代码： 
+
 ```
 git clone git://github.com/clojure/java.jdbc.git
 ```
@@ -15,6 +16,7 @@ git clone git://github.com/clojure/java.jdbc.git
 ![ 1](https://f.cloud.github.com/assets/2130097/267703/ff7b665c-8eb3-11e2-8992-b6532f7936a0.png)
 
 下面是进行<a href="http://www.mysql.com/downloads/" target="_blank">MySQL</a>数据库操作的实例： 
+
 ```clojure
 (use 'clojure.java.jdbc)
 
@@ -44,7 +46,8 @@ git clone git://github.com/clojure/java.jdbc.git
 
 ```
 
-输入结果： 
+输出结果： 
+
 ```
 10 : Tom
 11 : Jack

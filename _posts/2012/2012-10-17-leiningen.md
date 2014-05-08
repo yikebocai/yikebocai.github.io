@@ -6,6 +6,7 @@ tags:
 ---
 
 <a href="https://github.com/technomancy/leiningen" target="_blank">Leiningen</a>是类似Maven的一个Clojure自动化构建工具，它在工程里也会生成一个类似pom的文件叫project.clj，不过是clojure风格的，更简洁和简单，支持命令操作和IntelliJ idea集成环境。 从Leiningen主页下载1.7.0版本的standalone jar包，放到比如D:\app\lein目录下，然后拷贝下面的脚本内容到lein.bat文件中，也放置到该目录下。 
+
 ```bat
 @echo off
 
@@ -280,11 +281,14 @@ goto EOF
 :EOF
 ```
  增加环境变量LEIN_JAR=D:\app\leiningen-1.7.0-jar，PATH中增加D:\app\lein，使得在任意目录下可以直接执行lein命令。在命令行下输入lein version测试安装是否正常： 
+
 ```
 D:\work\myclj>lein version
 Leiningen 1.7.0 on Java 1.6.0_24 Java HotSpot(TM) Client VM
 ```
+
  执行命令lein new myclj可以生成一个新的clojure工程，目录结构如下： 
+
 ```
 myclj
 |--src
@@ -293,6 +297,7 @@ myclj
 |--test
 |--project.clj
 ```
+
 既然使用IntelliJ idea作为集成开发环境，那么结合两者是最好不过，幸好已经有人都已准备好了，下载最新0.2.3版本的<a href="http://plugins.intellij.net/plugin?pr=idea&pluginId=5029" target="_blank">leiningen插件</a>，在工作区最右侧会多出一个leiningen的栏目，点开后可以添加刚才生成的工程文件，点击展示的命令可以直接进行lein命令操作。点击Leiningen Setttings可以设置lein.bat和leiningen-1.7.0-standalone.jar的位置及lein的目录。 我们同样测试一下数据库访问，在project.clj中增加两行依赖，点击leiningen栏目框中的deps命令，它会自动下载依赖的jar到lib目录下，特别要注意的是2.0版本的leiningen是有<a href="https://github.com/derkork/intellij-leiningen-plugin/issues/11" target="_blank">bug</a>的，无法自动生成依赖的jar包，至今依然没有解决。
  
 ![ -11](https://f.cloud.github.com/assets/2130097/267713/f15f8606-8eb4-11e2-8f04-89ad81e4b760.png)

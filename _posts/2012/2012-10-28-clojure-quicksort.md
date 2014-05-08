@@ -14,6 +14,7 @@ tags:
 **concat**：和Mysql中的功能类似，将多个元素或集合合并成一个 
 
 递归的实现方案如下： 
+
 ```clojure
 (defn quick-sort [mylist]
   ;(println "mylist:" mylist)
@@ -44,6 +45,7 @@ tags:
 ```
 
 输出结果如下： 
+
 ```
 sorted: (1 2 4 5 8 9 10 22)
 ```

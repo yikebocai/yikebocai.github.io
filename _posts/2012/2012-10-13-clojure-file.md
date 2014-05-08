@@ -8,6 +8,7 @@ tags:
 Tag:Clojure
 
 学习Clojure也有一段时间了，感觉虽然对Clojure有了点认识，但除了在REPL里做些简单的测试外，真要想在实际中使用好像还无从下手，正好IntelliJ IDEA环境也搭建好了，拿来练练手。想了想，还是从最常用的文件操作来实现，毕竟日常工作中有很多文本的处理，用clojure实现应该比java简单很多。 
+
 ```clojure
 (require '[clojure.java.io :as io])
 
@@ -38,6 +39,7 @@ Tag:Clojure
 ```
 
 输出结果： 
+
 ```
 (hello,bob hello,zhang)
 ---------

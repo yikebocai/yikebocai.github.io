@@ -6,6 +6,7 @@ tags:
 ---
 
 基本思路是使用Java的IndexOf确定字符串的位置，然后把剩余的文本部分做递归处理 
+
 ```clojure
 ;;统计一段文本中出现某个字符串的次数
 (defn count-string-in-text [str txt]
@@ -25,6 +26,7 @@ tags:
 ```
 
 运行结果： 
+
 ```
 count string in text:3
 ```
