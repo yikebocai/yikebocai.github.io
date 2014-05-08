@@ -81,27 +81,27 @@ MD5算法直接调用jdk里的`MessageDigest`类，不仅可以实现MD5，还�
                 <tr>
                     <td>登录邮件：</td>
                     <td><input type="text" class="span4" placeholder="用户帐号，接收消息的Email" name="email"
-                               value={ {email} }/></td>
+                               value=\{\{email\}\}/></td>
                 </tr>
                 <tr>
                     <td>密码：</td>
                     <td><input type="password" class="span4" placeholder="登录密码" name="password"
-                               value={ {password} }/></td>
+                               value=\{\{password\}\}/></td>
                 </tr>
                 <tr>
                     <td>源文件目录:</td>
                     <td><input type="text" class="span4" placeholder="GitHub源文件放置的目录，必须是绝对路径" name="path"
-                               value={ {path} }/></td>
+                               value=\{\{path\}\}/></td>
                 </tr>
                 <tr>
                     <td>GitHub Url：</td>
                     <td><input type="text" class="span4"
                                placeholder="Github Reposity地址，如：https://github.com/yikebocai/blog.git" name="url"
-                               value={ {url} }/></td>
+                               value=\{\{url\}\}/></td>
                 </tr>
                 <tr>
                     <td>同步周期：</td>
-                    <td><input type="text" class="span4" placeholder="整数，单位为小时" name="period" value={ {period} }/>
+                    <td><input type="text" class="span4" placeholder="整数，单位为小时" name="period" value=\{\{period\}\}/>
                     </td>
                 </tr>
 
@@ -109,12 +109,12 @@ MD5算法直接调用jdk里的`MessageDigest`类，不仅可以实现MD5，还�
                 <tr>
                     <td>博客标题:</td>
                     <td><input type="text" class="span4" placeholder="比如：一棵波菜的BLOG" name="blogname"
-                               value={ {blogname} }/></td>
+                               value=\{\{blogname\}\}/></td>
                 </tr>
                 <tr>
                     <td>呢称：</td>
                     <td><input type="text" class="span4" placeholder="比如：bocai" name="nickname"
-                               value={ {nickname} }/></td>
+                               value=\{\{nickname\}\}/></td>
                 </tr>
 
                 <tr>
@@ -127,14 +127,14 @@ MD5算法直接调用jdk里的`MessageDigest`类，不仅可以实现MD5，还�
         </form>
     </div>
 
-    {% ifequal result "OK" %}
+    \{\% ifequal result "OK" \%\}
     <div id="configAlert" class="alert alert-success">
         <a class="close" data-dismiss="alert">x</a>
         设置完毕！
     </div>
-    {% endifequal %}
+    \{\% endifequal \%\}
 </div>
-{% endblock %}
+\{\% endblock \%\}
 
 <!-- click button event  -->
 <script type="text/javascript">
