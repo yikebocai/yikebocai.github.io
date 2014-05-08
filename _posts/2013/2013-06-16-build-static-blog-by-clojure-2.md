@@ -83,9 +83,9 @@ myapp/
   :profiles
   {:production {:ring {:open-browser? false
                        :stacktraces?  false
-                       :auto-reload?  false}}
+                       :auto-reload?  false} }
    :dev {:dependencies [[ring-mock "0.1.5"]
-                        [ring/ring-devel "1.1.8"]]}}
+                        [ring/ring-devel "1.1.8"]]} }
   :min-lein-version "2.0.0")
   ```
 可以看到一些基础的框架像lib-noir、compojure等都已加进来了，插件用了lein-ring，可以用来启动、打包。
@@ -127,31 +127,31 @@ Started server on port 3000
 
 ```html
  <!-- Le styles -->
-    <link href="{{context}}/css/bootstrap.css" rel="stylesheet">
+    <link href="{ {context} }/css/bootstrap.css" rel="stylesheet">
     <style type="text/css">
       body {
         padding-top: 60px;
         padding-bottom: 40px;
       }
     </style>
-    <link href="{{context}}/css/bootstrap-responsive.css" rel="stylesheet">
+    <link href="{ {context} }/css/bootstrap-responsive.css" rel="stylesheet">
 
  <!-- Le javascript
     ========================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
-    <script src="{{context}}/js/jquery.js"></script>
-    <script src="{{context}}/js/bootstrap-transition.js"></script>
-    <script src="{{context}}/js/bootstrap-alert.js"></script>
-    <script src="{{context}}/js/bootstrap-modal.js"></script>
-    <script src="{{context}}/js/bootstrap-dropdown.js"></script>
-    <script src="{{context}}/js/bootstrap-scrollspy.js"></script>
-    <script src="{{context}}/js/bootstrap-tab.js"></script>
-    <script src="{{context}}/js/bootstrap-tooltip.js"></script>
-    <script src="{{context}}/js/bootstrap-popover.js"></script>
-    <script src="{{context}}/js/bootstrap-button.js"></script>
-    <script src="{{context}}/js/bootstrap-collapse.js"></script>
-    <script src="{{context}}/js/bootstrap-carousel.js"></script>
-    <script src="{{context}}/js/bootstrap-typeahead.js"></script>
+    <script src="{ {context} }/js/jquery.js"></script>
+    <script src="{ {context} }/js/bootstrap-transition.js"></script>
+    <script src="{ {context} }/js/bootstrap-alert.js"></script>
+    <script src="{ {context} }/js/bootstrap-modal.js"></script>
+    <script src="{ {context} }/js/bootstrap-dropdown.js"></script>
+    <script src="{ {context} }/js/bootstrap-scrollspy.js"></script>
+    <script src="{ {context} }/js/bootstrap-tab.js"></script>
+    <script src="{ {context} }/js/bootstrap-tooltip.js"></script>
+    <script src="{ {context} }/js/bootstrap-popover.js"></script>
+    <script src="{ {context} }/js/bootstrap-button.js"></script>
+    <script src="{ {context} }/js/bootstrap-collapse.js"></script>
+    <script src="{ {context} }/js/bootstrap-carousel.js"></script>
+    <script src="{ {context} }/js/bootstrap-typeahead.js"></script>
 
 ```
 
@@ -198,23 +198,23 @@ Started server on port 3000
 
 ```html
 
-{% extends "myapp/views/templates/base.html" %}
+{ % extends "myapp/views/templates/base.html" % }
 
-{% block content %}
+{ % block content % }
 
 <div class="row"> 
-	{% for blog in blogs %}
+	{ % for blog in blogs % }
 
-	<div > <a href="#">{{blog.postdate}} - {{blog.title}}</a> </div>  
+	<div > <a href="#">{ {blog.postdate} } - { {blog.title} }</a> </div>  
 	<div ><br></div>
 	
-	{% endfor %}
+	{ % endfor % }
 </div>
 
-{% endblock %}
+{ % endblock % }
 ```
 
-其中，`{% %}`中的部分是模板代码，会在页面渲染的时候生成真正的html代码。
+其中，`{ % % }`中的部分是模板代码，会在页面渲染的时候生成真正的html代码。
 
 为了能在浏览器输入`http://locahost:3000/`时加载这个html页面，需要定义一个路由信息，将URI为`/`的访问，路由到首页的处理模块上，在`routes/home.clj`文件里加入路由定义：
 
