@@ -9,13 +9,17 @@ tags:
 
 ## jmap
 jmap(Memeory Map for Java)命令主要用于成堆快照，或者查看堆内生成的对象实例。这个命令全部是用的查看heap内的信息或使用情况，参照jstack的命名，感觉叫jheap会更直接一点：）。生成堆快照文件除了jmap命令外，常用的还有-XX:+HeapDumpOnOutOfMemoryError参数，在OOM异常时生成，甚至通过-XX:HeapDumpOnCtrlBreak参数使用CTRL+Break键生成。32位虚拟机下jmap命令格式为：
+
 ```
 jmap [option] vmid
 ```
+
 如果64位虚拟机下命令格式为：
+
 ```
 jmap -J-d64 [option] vmid
 ```
+
 `option`的主要参数选项：
 <table> 
 <tr><td><b>Option</b></td><td><b>Description</b></td></tr>
@@ -26,13 +30,17 @@ jmap -J-d64 [option] vmid
 <tr><td>-permstat</td><td>以ClassLoader为统计口径显示永久代内存状态。只在Linux/Solaris平台有效</td></tr> 
 <tr><td>-F</td><td>强制生成堆快照。只在Linux/Solaris平台有效</td></tr> 
 </table>
+
 使用`-dump`生成堆快照，可以使用jhat来启动一个内置浏览器来查看，但一般情况使用[MAT(Eclipse Memory Analyzer Tool)](http://eclipse.org/mat/)在本地分析更方便：
+
 ```
 [7080@icbu-qa-006 intl-risk]$ jmap -dump:live,format=b,file=dump.bin 2041
 Dumping heap to /home/7080/work/intl-risk/dump.bin ...
 Heap dump file created
 ```
+
 使用`-heap`打印堆使用情况：
+
 ```
 [7080@icbu-qa-006 ~]$ jmap -heap 2041
 Attaching to process ID 2041, please wait...
@@ -133,6 +141,7 @@ PS Perm Generation
 ```
 
 使用`-histo`打印类和对象使用情况，分析内存不足分析哪些对象占用过多是非常有用：
+
 ```
  num     #instances         #bytes  class name
 ----------------------------------------------
@@ -150,6 +159,7 @@ Total       6364828      405048144
 ```
 
 使用`-permstat`查看永久代内存状态，这个过程会比较慢：
+
 ```
 [7080@icbu-qa-006 intl-risk]$ jmap -permstat 2041
 Attaching to process ID 2041, please wait...
@@ -187,9 +197,11 @@ JDK提供jhat（JVM Heap Analysis Tool）来解析jmap生成的堆快照文件�
 
 ## jstack
 jstack（Stack Trace for Java）用于生成虚拟机当前时刻的线程快照，常用来查找线程死锁的问题。
+
 ```
 jstack [option] vmid
 ```
+
 option参数如下：
 <table> 
 <tr><td><b>Option</b></td><td><b>Description</b></td></tr>
@@ -199,6 +211,7 @@ option参数如下：
 </table>
 
 打印栈信息：
+
 ```
 [7080@icbu-qa-006 intl-risk]$ jstack 2041
 2013-03-31 06:39:10

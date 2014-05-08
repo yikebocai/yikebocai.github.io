@@ -9,6 +9,7 @@ tags:
 自带的一些小工具能让你快速定位问题所在，这些工具都是基于命令行的，远程连接服务器在终端下就可以操作，可以说十分方便。
 
 ## jps
+
 jps命令类似Linux下的ps，只不过显示的是虚拟机的进程号，后面介绍到的jstat等命令都需要用到这个虚拟机进程号
 <table>
    <tr>
@@ -34,6 +35,7 @@ jps命令类似Linux下的ps，只不过显示的是虚拟机的进程号，后�
 </table>
 
 通过一段源代码来测试一下这几个参数的含义
+
 ```java
 package org.bocai.jvm.monitor;
 
@@ -59,7 +61,9 @@ public class Testjps {
 }
 
 ```
+
 在Eclipse里运行Testjps程序，然后在命令行下可以看到jps的执行结果：
+
 ```bash
 xinbo.zhangxb@ALI-031884N /d/work/jvm/gc/target/classes (master)
 $ jps
@@ -75,6 +79,7 @@ $ jps -q
 ```
 
 `-m`参数是会显示传给main函数的参数，为了测试这个参数，我们在命令行下执行Testjps，并传入一个任意字符串参数。
+
 ```
 xinbo.zhangxb@ALI-031884N /d/work/jvm/gc/target/classes (master)
 $ java org/bocai/jvm/monitor/Testjps world
@@ -88,6 +93,7 @@ $ jps -m
 ```
 
 `-l`参数会输出主类的全名，如下所示
+
 ```
 xinbo.zhangxb@ALI-031884N /d/work/jvm/gc/target/classes (master)
 $ jps -l
@@ -97,15 +103,20 @@ $ jps -l
 ```
 
 如果执行的jar包，则输出jar的路径。为了测试这一情况，我们先对class文件进行打包。首先先创建一个MANIFEST文件，用来指定jar包运行时的主类是什么，文件名可以任意取，内容如下：
+
 ```
 Main-Class: org.bocai.jvm.monitor.Testjps
 
 ```
+
 然后用指定的MNIFEST文件和Java源文件目录来打包：
+
 ```
 jar cvfm mymanifest .
 ```
+
 最后运行jar：
+
 ```
 xinbo.zhangxb@ALI-031884N /d/work/jvm/gc/target/classes (master)
 $ java -jar Testjps.jar  jps
@@ -119,7 +130,9 @@ $ jps -l
 ```
 
 ## jstat
+
 jstat(JVM Statistics Monitoring Tool)是用来监控JVM虚拟机运行时的各种状态信息，比如GC情况、类装载情况等。jstat的使用方法如下：
+
 ```
 jstat -gc 1s 10
 ```
@@ -141,6 +154,7 @@ jstat -gc 1s 10
 </table>
 
 下面先运行一个简单的程序：
+
 ```java
 package org.bocai.jvm.monitor;
 
@@ -180,15 +194,18 @@ public class Testjstat {
 }
 
 ```
+
 ***
 ### -class
 先查看类加载情况：
+
 ```
 xinbo.zhangxb@ALI-031884N /d/work/jvm/gc (master)
 $ jstat -class 2124
 Loaded  Bytes  Unloaded  Bytes     Time
     14    16.4        0     0.0       0.03
 ```
+
 其中几列所代表的含义如下：
 <table> 
 <tr><td><b>Column</b></td><td><b>Description</b></td></tr>
@@ -201,12 +218,14 @@ Loaded  Bytes  Unloaded  Bytes     Time
 *****
 ### -compiler
 JIT编译情况:
+
 ```
 xinbo.zhangxb@ALI-031884N /d/work/jvm/gc (master)
 $ jstat -compiler 2124
 Compiled Failed Invalid   Time   FailedType FailedMethod
        4      0       0     0.00          0
 ```
+
 其中几列所代表的含义如下：
 <table> 
 <tr><td><b>Column</b></td><td><b>Description</b></td></tr>
@@ -220,12 +239,14 @@ Compiled Failed Invalid   Time   FailedType FailedMethod
 ***
 ### -gc 
 监控Java堆状况:
+
 ```
 xinbo.zhangxb@ALI-031884N /d/work/jvm/gc (master)
 $ jstat -gc 2124
  S0C    S1C    S0U    S1U      EC       EU        OC         OU       PC     PU    YGC     YGCT    FGC    FGCT     GCT
 1024.0 1024.0  0.0    0.0    8192.0   4096.0   10240.0     8327.7   12288.0 363.9    4302    5.927 6452    81.285   87.212
 ```
+
 其中几列所代表的含义如下：
 <table> 
 <tr><td><b>Column</b></td><td><b>Description</b></td></tr>
@@ -248,6 +269,7 @@ $ jstat -gc 2124
 ***
 ### -gcutil
 监控Java堆的百分比情况，其中`-t`在第一列输出JVM启动到当前的时间单位为秒，`-hn`表示每隔几行输出一行标题：
+
 ```
 xinbo.zhangxb@ALI-031884N /d/work/jvm/gc (master)
 $ jstat -gcutil -t -h5 4488 1s 10
@@ -264,6 +286,7 @@ Timestamp         S0     S1     E      O      P     YGC     YGCT    FGC    FGCT 
            26.2   0.00   0.00  50.00  81.33   2.96    362    0.482   542    6.081    6.564
            27.2   0.00   0.00  75.00  81.33   2.96    376    0.500   563    6.311    6.811
 ```
+
 其中几列所代表的含义如下：
 <table> 
 <tr><td><b>Column</b></td><td><b>Description</b></td></tr>
@@ -283,9 +306,11 @@ Timestamp         S0     S1     E      O      P     YGC     YGCT    FGC    FGCT 
 
 ## jinfo
 jinfo(Configuration Info for Java)用来实时查看和调整虚拟机的各项参数，格式如下：
+
 ```
 jinfo [option] pid
 ```
+
 其中option选项主要包括：
 <table> 
 <tr><td><b>Option</b></td><td><b>Description</b></td></tr>
@@ -298,6 +323,7 @@ jinfo [option] pid
 </table>
 
 举例如下：
+
 ```
 [7080@icbu-qa-006 bin]$ jinfo -flag PrintGCDetails 2041
 -XX:+PrintGCDetails
@@ -329,6 +355,7 @@ os.name = Linux
 ```
 
 但不知道为什么无法设置某个参数的值：
+
 ```
 [7080@icbu-qa-006 bin]$ jinfo -flag SurvivorRatio=5 2041
 Exception in thread "main" java.io.IOException: Command failed in target VM
@@ -342,4 +369,5 @@ Exception in thread "main" java.io.IOException: Command failed in target VM
 其它更多的用法请[参见这里](http://docs.oracle.com/javase/6/docs/technotes/tools/share/jinfo.html)
 
 **参考**
+
 1.[JDK Development Tools](http://docs.oracle.com/javase/6/docs/technotes/tools/)
