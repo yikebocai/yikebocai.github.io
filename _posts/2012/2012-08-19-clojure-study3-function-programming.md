@@ -9,6 +9,7 @@ tags:
 1.<a href="http://en.wikipedia.org/wiki/Functional_programming" target="_blank">函数编程(Functional Pragramming)</a>的定义是指计算机的运算都像数学上的函数运算一样，没有状态，值是不可变的；函数能作为另一个函数的参数传入，一个函数的返回结果也可以是一个函数。比如著名函数编程语言有<a href="http://common-lisp.net/" target="_blank">Common Lisp</a>，<a href="http://clojure.org" target="_blank">Clojure</a>，<a href="http://www.erlang.org/" target="_blank">Erlang</a>，<a href="http://www.scala-lang.org/" target="_blank">Scala</a>，<a href="http://www.haskell.org/haskellwiki/Haskell" target="_blank">Haskell</a>等 
 
 2.把一个函数作为参数传进去，可以传入任意多个参数，调用任意多个函数 
+
 ```clojure
 user=> (defn call-twice [f x y] (f x y) (f x y))
 #'user/call-twice
