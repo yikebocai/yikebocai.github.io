@@ -6,4 +6,3 @@ paginate: 20
 markdown: redcarpet
 redcarpet:
     extensions: ["fenced_code_blocks", "autolink", "tables", "strikethrough"]
-img_url: media
