@@ -127,14 +127,14 @@ MD5算法直接调用jdk里的`MessageDigest`类，不仅可以实现MD5，还�
         </form>
     </div>
 
-    { % ifequal result "OK" % }
+    {% ifequal result "OK" %}
     <div id="configAlert" class="alert alert-success">
         <a class="close" data-dismiss="alert">x</a>
         设置完毕！
     </div>
-    { % endifequal % }
+    {% endifequal %}
 </div>
-{ % endblock % }
+{% endblock %}
 
 <!-- click button event  -->
 <script type="text/javascript">
