@@ -14,7 +14,7 @@ tags:
 
 在CPU单核时代，并发主要靠[操作系统](http://en.wikipedia.org/wiki/Operating_system)分时技术（有的叫[Time-sharing](http://en.wikipedia.org/wiki/Time_sharing)，也有的称为[Time slice](http://en.wikipedia.org/wiki/Preemption_\(computing\)#Time_slice)）来实现，因为CPU内核只有一个，从硬件上来讲CPU同一时间只能处理一个计算机指令，要想实现“并发”必须进行时间片轮询，但这个只是让应用程序**看起来**是在同一时间处理多个。但随着计算机硬件技术的发展，现在很普通的PC都是四核了，服务器甚至有更多的内核或者多颗CPU，这从硬件上保证了可以实现真正的并发-程序可以真正做到并行计算，不需要操作系统分时技术的支持，但真正地实现除了在多核CPU上并行计算外，每个内核还是会使用分时技术来实现的，下面是并发和并行的示例：
 
-![concurrentcy and parrellism](myimg/concurrency_parallelism.jpg)
+![concurrentcy and parrellism](/myimg/concurrency_parallelism.jpg)
 
 分时技术的实现通常有两种，一种是[抢占式（Preemtive）](http://en.wikipedia.org/wiki/Preemption_(computing)，现在主流的操作系统像Windows 7、Linux、Unix、Mac OS X等都是使用的这一种，另外一种是[协作式（Cooperative）](http://en.wikipedia.org/wiki/Computer_multitasking#Cooperative_multitasking.2Ftime-sharing)，在一些早期的操作系统上，比如Windows 3.x，Window 95、97、Me也还保留的有，以及早期的苹果MAC OS上都使用这种方式，它的最大缺点就是假如在执行一个时间片时遇到IO阻塞或死锁，有可能导致其它进程或线程长时间甚至一直获取不了计算资源，因此这种方式已被现在操作系统抛弃。
 
