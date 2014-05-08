@@ -11,14 +11,13 @@ Java运行期的内存结构包括`堆(Heap)`、`栈(VM Stack)`、`方法区(Met
 
 为了更深入地理解内存回收机制，下面的代码是我参照《[深入理解JAVA虚拟机-JVM高级特性与最佳实践](http://book.douban.com/subject/6522893/)》提供的例子而写，分别触发Minor GC和Full GC。
 
-```Java
+```java
 package org.bocai.jvm.gc;
 
 /**
  * VM Params:-verbose:gc -Xms20M -Xmx20M -Xmn10M -XX:SurvivorRatio=8 -XX:+PrintGCDetails -XX:MaxTenuringThreshold=1 -XX:+PrintTenuringDistribution
  * @author yikebocai@gmail.com
  * @since 2013-3-20
- * 
  */
 public class GCDemo {
 
@@ -72,10 +71,7 @@ public class GCDemo {
 		//first Full GC
 		byte[] alloc7=new byte[2*_1MB];
 	}
-	
-
 }
-
 ```
 
 上面的例子很简单，我的困惑来自于Surivivor的对象处理机制，如果`MaxTenuringThreshold`大于1,在分配alloc7对象时,alloc5对象只经历了一次Minor GC,还没有达到MaxTenuringThreshold设定的值,为何放在Survivor区的alloc5对象就被移到了Old区,并且不管这个参数的值设为多少,只要经历alloc7对象的分配,都会被移到Old区,如下所示:
@@ -106,6 +102,7 @@ Heap
 ```
 
 我们注意到`from space 1024K,0%`,Survivor区的对象被移走了,把alloc7对象分配那行注释掉,再看一下:
+
 ```
 [GC [DefNew
 Desired survivor size 524288 bytes, new threshold 1 (max 1)
