@@ -135,6 +135,9 @@ p code {
     font-family: monospace;
     font-size: 14px;
     border: 1px solid #edebea;
+    padding: 2px 4px;
+    background-color: #f7f7f9;
+    margin: 0 2px 0 2px;
 }
 hr {
     border: 0;
