@@ -2,7 +2,9 @@
 layout: post
 title: 一个http请求背后的故事之二
 categories: tech
-tags: http,tcp
+tags: 
+- http
+- tcp
 ---
 
 ### 建立连接

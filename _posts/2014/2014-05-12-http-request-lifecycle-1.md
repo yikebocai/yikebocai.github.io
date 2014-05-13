@@ -2,7 +2,9 @@
 layout: post
 title: 一个http请求背后的故事之一
 categories: tech
-tags: http,dns
+tags: 
+- http
+- dns
 ---
 
 ![HTTP](/myimg/http-request.jpg)
