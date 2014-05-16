@@ -152,7 +152,7 @@ MD5算法直接调用jdk里的`MessageDigest`类，不仅可以实现MD5，还�
 
 配置页面的效果如下：
 
-![config](/myimg/config.png)
+![config](http://yikebocai.com/myimg/config.png)
 
 ## 文章同步
 
@@ -200,12 +200,12 @@ MD5算法直接调用jdk里的`MessageDigest`类，不仅可以实现MD5，还�
               (if-not (empty? error)
                 (timbre/error "git clone error:" error))))))
 
-      (let [src (str path "/src//myimg")
+      (let [src (str path "/src/http://yikebocai.com/myimg")
             dst (str (io/resource-path) "/")
             cpresp (sh "cp" "-rf" src dst)
             error (:err cpresp)]
         (do
-          (timbre/debug "/myimg path:" dst)
+          (timbre/debug "http://yikebocai.com/myimg path:" dst)
           (if (empty? error) true false)))))
   )
 ```
@@ -249,7 +249,7 @@ MD5算法直接调用jdk里的`MessageDigest`类，不仅可以实现MD5，还�
  
  上述的语法都是之前介绍过的，唯一注意的一点是`defn-`，和`defn`唯一不同的是后面多了一橫，这个表示这个函数是私有的，没有的话就表示是公有的。最后的页面Demo演示：
  
- ![sync](/myimg/sync.png)
+ ![sync](http://yikebocai.com/myimg/sync.png)
  
 ## 数据库管理工具
  
@@ -270,7 +270,7 @@ MD5算法直接调用jdk里的`MessageDigest`类，不仅可以实现MD5，还�
  
  页面效果如下：
  
- ![dbmanager](/myimg/dbmanager.png)
+ ![dbmanager](http://yikebocai.com/myimg/dbmanager.png)
  
 ## 后记
  

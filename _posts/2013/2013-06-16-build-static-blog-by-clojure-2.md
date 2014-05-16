@@ -186,7 +186,7 @@ Started server on port 3000
 
 效果如下：
 
-![bootstrap-nav](/myimg/blogapp-nav.png)
+![bootstrap-nav](http://yikebocai.com/myimg/blogapp-nav.png)
 
 ## 首页
 
@@ -271,10 +271,10 @@ Started server on port 3000
 )
 ```
 
-其中，`file`创建了一个`java.io.File`对象，`.isDirectory`用来判断是否是一个目录，将/myimg这样的目录排除掉。`sort-by`实现了排序功能，第一个参数是个匿名函数`#()`，用于指定将最后一个序列中的字符串解析成整形，第二个参数是`>`用于条件比较大的放前面，最后一个参数是把所有文件列出来，并通过`filter`来过滤掉非`.md`结尾的文件，`filter`的第一个参数也是个匿名函数。
+其中，`file`创建了一个`java.io.File`对象，`.isDirectory`用来判断是否是一个目录，将http://yikebocai.com/myimg这样的目录排除掉。`sort-by`实现了排序功能，第一个参数是个匿名函数`#()`，用于指定将最后一个序列中的字符串解析成整形，第二个参数是`>`用于条件比较大的放前面，最后一个参数是把所有文件列出来，并通过`filter`来过滤掉非`.md`结尾的文件，`filter`的第一个参数也是个匿名函数。
 
 至此，我们完成了第一个首页的功能，效果如下：
 
-![blogapp-home](/myimg/blogapp-home.png)
+![blogapp-home](http://yikebocai.com/myimg/blogapp-home.png)
 
 Clojure是不是很简单呢，加上html代码也就不到50行就实现了，这正是Clojure的魅力所在。

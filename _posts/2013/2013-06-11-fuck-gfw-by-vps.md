@@ -43,15 +43,15 @@ Error 324 (net::ERR_EMPTY_RESPONSE)
 ```
 我就是因为这一步搞错了，弄了半天，心想别人都轻松搞定了，我为啥就不行呢，难道是人品不行？其实这真和人品无关，是我没有搞清楚`HTTP代理`和`SOCKS代理 `的区别，http代理只支持http协议，我们用的ssh tunnel技术，因此肯定不行，需要使用socks代理，其中socks v4只支持tcp，socks v5会支持更多的协议，因此选v5好了，如下图所示：
 
-![switchysharp1](/myimg/switchysharp1.png)
+![switchysharp1](http://yikebocai.com/myimg/switchysharp1.png)
 
 之后点击`切换规则`的Tab，设置符合哪些规则的时候才使用代理，否则访问国内的网站还得到美国绕一圈累不累呀，毕竟我们的日志环境中还是以访问国内的网站为主，规则也很简单，如下图所示，当符合某个通配符之后就指定它用gfw的场景，不符合自定义规则都走正常的网络访问。
 
-![switchysharp2](/myimg/switchysharp2.png)
+![switchysharp2](http://yikebocai.com/myimg/switchysharp2.png)
 
 最后选择`自动切换模式`，在需要代理时自动走VPS代理，爽吧。
 
-![switchysharp3](/myimg/switchysharp3.png)
+![switchysharp3](http://yikebocai.com/myimg/switchysharp3.png)
 
 我测试了一下，访问这些网站速度都可以，YouTube上播放视频也很流畅。不过我在使用不长的时间内也发现，如果你不用代理 ，过一段时间ssh tunnel可能会断开，需要重新手动执行命令进行连接，不过也看到有人实现了自动连接的功能，有兴趣的可以自己去找找。
  
