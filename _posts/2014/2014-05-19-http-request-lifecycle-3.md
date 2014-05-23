@@ -44,3 +44,7 @@ tags:
 | col 3 is      | right-aligned | $1600 |
 | col 2 is      | centered      |   $12 |
 | zebra stripes | are neat      |    $1 |
+
+ 消息头 | 说明 
+ ------- | ----- 
+ Content-Type | 主要包括文本格式和字符集 
