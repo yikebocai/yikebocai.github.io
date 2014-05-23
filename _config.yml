@@ -5,4 +5,4 @@ pygments: true
 paginate: 20
 markdown: redcarpet
 redcarpet:
-    extensions: ["fenced_code_blocks", "autolink", "tables", "strikethrough"]
+    extensions: ["fenced_code_blocks", "autolink", "tables", "strikethrough", "with_toc_data"]
