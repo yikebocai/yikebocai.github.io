@@ -38,3 +38,9 @@ tags:
  | Server | Web服务器类型 | 
  
 消息头和消息体中间隔一个空行作为分隔，消息体通常就是我们在浏览器中点击右键查看页面源代码看出的HTML内容，在做前端页面编码时写的就是这部分内容，当然这些HTML代码有可能是静态页面，也可能是动态页面生成的，比如：jsp、asp，还有模板等。
+
+| Tables        | Are           | Cool  |
+| ------------- |:-------------:| -----:|
+| col 3 is      | right-aligned | $1600 |
+| col 2 is      | centered      |   $12 |
+| zebra stripes | are neat      |    $1 |
