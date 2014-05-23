@@ -16,27 +16,25 @@ tags:
 
 请求时的消息头（Request Header）主要包括：
 
-|消息头|说明|
-|-------|-----|
-|Accept| 表示本地浏览器可以接受的媒体类型，比如最常见的：*text/html*，*image/jpeg*等，服务端在返回时用`Content-Type`来指明返回的格式|
-|Accept-Charset|用来指明可以接受的字符集，比如：*ascii*，*utf-8*，*iso-8859-1*等，服务端返回时也在`Content-Type`中用`charset`来标明|
-|Accept-Encoding|可接受的编码方式，常见的有非压缩的和压缩格式，比如：*gzip*，用于减少网络流量传输，提高性能|
-|Accept-Language|接受的语言，比如我们中文是 *zh_CN* ,英文是 *us_EN* ，可以用权重来标明优先级|
-|From|请求来自哪里，这里放置的是一个Email，一般用于爬虫，方便对方联系|
-|Host|请求的服务器地址和端口|
-|If-Modified-Since|如果服务端的内容从该字段指定的时间没有发生的变动，服务端返回304，客户端使用缓存中的数据|
-|Referer|用来标识这个请求是从哪个URL跳转过来的|
-|User-Agent|浏览器信息，使用 **curl** 这种命令行的方式访问的话通常没有这个标识|
+ | 消息头 | 说明 | 
+ | ------- | ----- | 
+ | Accept |  表示本地浏览器可以接受的媒体类型，比如最常见的：*text/html*，*image/jpeg*等，服务端在返回时用`Content-Type`来指明返回的格式 | 
+ | Accept-Charset | 用来指明可以接受的字符集，比如：*ascii*，*utf-8*，*iso-8859-1*等，服务端返回时也在`Content-Type`中用`charset`来标明 | 
+ | Accept-Encoding | 可接受的编码方式，常见的有非压缩的和压缩格式，比如：*gzip*，用于减少网络流量传输，提高性能 | 
+ | Accept-Language | 接受的语言，比如我们中文是 *zh_CN* ,英文是 *us_EN* ，可以用权重来标明优先级 | 
+ | From | 请求来自哪里，这里放置的是一个Email，一般用于爬虫，方便对方联系 | 
+ | Host | 请求的服务器地址和端口 | 
+ | If-Modified-Since | 如果服务端的内容从该字段指定的时间没有发生的变动，服务端返回304，客户端使用缓存中的数据 | 
+ | Referer | 用来标识这个请求是从哪个URL跳转过来的 | 
+ | User-Agent | 浏览器信息，使用 **curl** 这种命令行的方式访问的话通常没有这个标识 | 
 
 
 返回时的消息头（Response Head）主要包括：
 
-|消息头|说明|
-|-------|-----|
-|Content-Type|主要包括文本格式和字符集|
-|Content-Lenght|消息体的长度|
-|Server|Web服务器类型|
-|Location|重定向URL|
-
-
+ | 消息头 | 说明 | 
+ | ------- | ----- | 
+ | Content-Type | 主要包括文本格式和字符集 | 
+ | Content-Lenght | 消息体的长度 | 
+ | Server | Web服务器类型 | 
+ 
 消息头和消息体中间隔一个空行作为分隔，消息体通常就是我们在浏览器中点击右键查看页面源代码看出的HTML内容，在做前端页面编码时写的就是这部分内容，当然这些HTML代码有可能是静态页面，也可能是动态页面生成的，比如：jsp、asp，还有模板等。
