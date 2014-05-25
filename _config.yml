@@ -2,8 +2,8 @@ permalink: /:year/:month/:title/
 url: http://yikebocai.com
 author: yikebocai
 timezone: Asia/Shanghai
-pygments: true
 paginate: 20
 markdown: redcarpet
-redcarpet: 
-    extensions: ["fenced_code_blocks", "tables", "highlight", "with_toc_data", "strikethrough", "underline"]
+redcarpet:
+  extensions: ["fenced_code_blocks", "tables", "highlight", "with_toc_data", "strikethrough", "underline"]
+
