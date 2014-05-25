@@ -1,6 +1,7 @@
 permalink: /:year/:month/:title/
 url: http://yikebocai.com
 author: yikebocai
+timezone: Asia/Shanghai
 pygments: true
 paginate: 20
 markdown: redcarpet
