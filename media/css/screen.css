@@ -100,10 +100,8 @@ h1 {
     font-size: 28px;
     line-height: 28px;
     margin: 0 0 28px 0;
-	background-color: #000;
-	color: #fff;
-	display: inline-block;
-	padding: 12px;
+    display: inline-block;
+    padding: 12px;
 }
 h2 {
     font-size: 26px;
@@ -160,8 +158,8 @@ pre {
 	background-color: #f3f3f3;
 }
 p code {
-    font-family: monospace;
-    font-size: 14px;
+    font-family: monaco;
+    font-size: 13px;
     border: 1px solid #edebea;
     padding: 2px 4px;
     background-color: #f7f7f9;
