@@ -188,7 +188,6 @@ a.ss-icon {
 }
 a:hover,
 a:focus {
-    color: #0009E0;
     text-decoration: underline;
 }
 em {
