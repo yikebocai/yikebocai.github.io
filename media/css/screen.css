@@ -94,7 +94,7 @@ body>div {
     -moz-box-shadow: 0 0 10px 0 #cfcfcf;
     -webkit-box-shadow: 0 0 10px 0 #cfcfcf;
     box-shadow: 0 0 10px 0 #cfcfcf;
-    border-top: 6px solid #EE0000;
+    border-top: 6px solid #A4A4AA;
 }
 h1 {
     font-size: 28px;
@@ -177,11 +177,11 @@ hr {
     margin: 0 0 22px 0;
 }
 a {
-    color: #EE0000;
+    color: #0092e0;
     text-decoration: none;
 }
 a:visited {
-    color: #B22222;
+    color: #0092E0;
 }
 a.ss-icon {
 	font-size: 20px;
