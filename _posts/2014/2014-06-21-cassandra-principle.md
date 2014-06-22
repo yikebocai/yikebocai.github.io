@@ -34,7 +34,7 @@ Cassandra作为一个底层的存储系统，能够方便地和Spark集成进行
 
 Cassandra没有像BigTable或Hbase那样选择中心控制节点，而选择了无中心的P2P架构，网络中的所有节点都是对等的，它们构成了一个环，节点之间通过P2P协议每秒钟交换一次数据，这样每个节点都拥有其它所有节点的信息，包括位置、状态等，如下图所示。
 
-![Cassandra Ring](http://yikebocai.com/mying/cassandra-ring.png)
+![Cassandra Ring](http://yikebocai.com/myimg/cassandra-ring.png)
 
 客户端可以连接集群中的任一个节点，和客户端建立连接的节点叫协作者(coordinator)，它相当于一个代理，负责定位该次请求要发到哪些实际拥有本次请求所需数据的节点上去获取，但如何获取并返回，主要根据客户端要求的一致性级别（Consistency Level）来定，比如：ONE指只要有一个节点返回数据就可以对客户端做出响应，QUONUM指需要返回几个根据用户的配置数目，ALL指等于数据复制份数的所有节点都返回结果才能向客户端做出响应，对于数据一致性要求不是特别高的可以选择ONE，它是最快的一种方式。
 
