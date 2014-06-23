@@ -69,6 +69,12 @@ Cassandra的存储结构类似LSM树（[Log-Structured Merge Tree](http://en.wik
 
 ## 读请求
 
+读取数据时，首先检查Bloom filter，每一个SSTable都有一个Bloom filter用来检查partition key是否在这个SSTable，这一步是在访问任何磁盘IO的前面就会做掉。如果存在，再检查partition key cache，然后再做如下操作：
+
+如果在cache中能找到索引，到compression offset map中找拥有这个数据的数据块，从磁盘上取得压缩数据并返回结果集。如果在cache中找不到索引，搜索partition summary确定索引在磁盘上的大概位置，然后获取索引入口，在SSTable上执行一次单独的寻道和一个顺序的列读取操作，下面也是到compression offset map中找拥有这个数据的数据块，从磁盘上取得压缩数据并返回结果集。读取数据时会合并Memtable中缓存的数据、多个SSTable中的数据，才返回最终的结果。比如更新用户Email后，用户名、密码等还在老的SSTable中，新的EMail记录到新的SSTable中，返回结果时需要读取新老数据并进行合并。
+
+2.0之后的Bloom filter,compression offset map,partition summary都不放在Heap中了，只有partition key cache还放在Heap中。Bloom filter增长大约1~2G每billion partitions。partition summary是partition index的样本，你可以通过index_interval来配置样本频率。compression offset map每TB增长1~3G。对数据压缩越多，就会有越多个数的压缩块，和越大compression offset table。
+ 
 读请求(Read Request)分两种，一种是Rirect Read Request，根据客户端配置的Consistency Level读取到数据即可返回客户端结果。一种是Background Read Repair Request,除了直接请求到达的节点外，会被发送到其它复制节点，用于修复之前写入有问题的节点，保证数据最终一致性。客户端读取时，Coordinator首先联系Consistency Level定义的节点，发送请求到最快响应的复制节点上，返回请求的数据。如果有多个节点被联系，会在内存比较每个复制节点传过的数据行，如果不一致选取最近的数据（根据时间戳）返回给客户端，并在后台更新过期的复制节点，这个过程被称作Read Repair 。
 
 下面是Consistency Level 为ONE的读取过程，Client连接到任意一个节点上，该节点向实际拥有该数据的节点发出请求，响应最快的节点数据回到Coordinator后，就将数据返回给Client。如果其它节点数据有问题，Coordinator会将最新的数据发送有问题的节点上，进行数据的修复。
