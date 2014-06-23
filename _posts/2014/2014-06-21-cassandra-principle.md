@@ -61,7 +61,7 @@ Cassandra的存储结构类似LSM树（[Log-Structured Merge Tree](http://en.wik
 
  Commit Log记录每次写请求的完整信息，此时并不会根据主键进行排序，而是顺序写入，这样进行磁盘操作时没有随机写导致的磁盘大量寻道操作，对于提升速度有极大的帮助，号称最快的本地数据库LevelDB也是采用这样的策略。Commit Log会在Memtable中的数据刷入SSTable后被清除掉，因此它不会占用太多磁盘空间，Cassandra的配置时也可以单独设置存储区，这为使用高性能但容量小价格昂贵的SSD硬盘存储Commit Log，使用速度度但容量大价格非常便宜的传统机械硬盘存储数据的混合布局提供了便利。
 
-写入到Memtable时，Cassandra能够动态地为它分配内存空间，你也可以使用工具自己调整。当达到阀值后，Memtable中的数据和索引会被放到一个队列中，然后flush到磁盘，可以使用memtable_flush_queue_size参数来指定队列的长度。当进行flush时，会停止写请求。也可以使用nodetool flush工具手动刷新 数据到磁盘，重启节点之前最好进行此操作，以减少Commit Log回放的时间。为了刷新数据，会根据partition key对Memtables进行重排序，然后顺序写入磁盘。这个过程是非常快的，因为只包含Commit Log的追加和顺序的磁盘写入。
+写入到Memtable时，Cassandra能够动态地为它分配内存空间，你也可以使用工具自己调整。当达到阀值后，Memtable中的数据和索引会被放到一个队列中，然后flush到磁盘，可以使用`memtable_flush_queue_size`参数来指定队列的长度。当进行flush时，会停止写请求。也可以使用nodetool flush工具手动刷新 数据到磁盘，重启节点之前最好进行此操作，以减少Commit Log回放的时间。为了刷新数据，会根据partition key对Memtables进行重排序，然后顺序写入磁盘。这个过程是非常快的，因为只包含Commit Log的追加和顺序的磁盘写入。
  
 当memtable中的数据刷到SSTable后，Commit Log中的数据将被清理掉。每个表会包含多个Memtable和SSTable，一般刷新完毕，SSTable是不再允许写操作的。因此，一个partition一般会跨多个SSTable文件，后续通过Compaction对多个文件进行合并，以提高读写性能。
 
@@ -83,7 +83,7 @@ Cassandra的存储结构类似LSM树（[Log-Structured Merge Tree](http://en.wik
 
 ## 数据整理（Compaction）
   
-更新操作不会立即更新，这样会导致随机读写磁盘，效率不高，Cassandra会把数据顺序写入到一个新的SSTable，并打上一个时间戳以标明数据的新旧。它也不会立马做删除操作，而是用Tombstone来标记要删除的数据。Compaction时，将多个SSTable文件中的数据整合到新的SSTable文件中，当旧SSTable上的读请求一完成，会被立即删除，空余出来的空间可以重新利用。虽然Compcation没有随机的IO访问，但还是一个重量级的操作，一般在后台运行，并通过限制它的吞吐量来控制，compaction_throughput_mb_per_sec参数可以设置，默认是16M/s。另外，如果key cache显示整理后的数据是热点数据，操作系统会把它放入到page cache里，以提升性能。它的合并的策略有以下两种：
+更新操作不会立即更新，这样会导致随机读写磁盘，效率不高，Cassandra会把数据顺序写入到一个新的SSTable，并打上一个时间戳以标明数据的新旧。它也不会立马做删除操作，而是用Tombstone来标记要删除的数据。Compaction时，将多个SSTable文件中的数据整合到新的SSTable文件中，当旧SSTable上的读请求一完成，会被立即删除，空余出来的空间可以重新利用。虽然Compcation没有随机的IO访问，但还是一个重量级的操作，一般在后台运行，并通过限制它的吞吐量来控制，`compaction_throughput_mb_per_sec`参数可以设置，默认是16M/s。另外，如果key cache显示整理后的数据是热点数据，操作系统会把它放入到page cache里，以提升性能。它的合并的策略有以下两种：
 
 * **SizeTieredCompactionStrategy**:每次更新不会直接更新原来的数据，这样会造成随机访问磁盘，性能不高，而是在插入或更新直接写入下一个sstable，这样是顺序写入速度非常快，适合写敏感的操作。但是，因为数据分布在多个sstable，读取时需要多次磁盘寻道，读取的性能不高。为了避免这样情况，会定期在后台将相似大小的sstable进行合并，这个合并速度也会很快，默认情况是4个sstable会合并一次，合并时如果没有过期的数据要清理掉，会需要一倍的空间，因此最坏情况需要50%的空闲磁盘。
 * **LeveledCompactionStrategy**：创建固定大小默认是5M的sstable，最上面一级为L0下面为L1，下面一层是上面一层的10倍大小。这种整理策略读取非常快，适合读敏感的情况，最坏只需要10%的空闲磁盘空间，它参考了LevelDB的实现，详见[LevelDB的具体实现原理](http://www.cnblogs.com/haippy/archive/2011/12/04/2276064.html)。
@@ -110,7 +110,7 @@ Snitch用来确定从哪个数据中心和哪个机架上写入或读取数据,�
 
 Cassandra从Gossip信息中确认某个节点是否可用，避免客户端请求路由到一个不可用的节点，或者执行比较慢的节点，这个通过dynamic snitch可以判断出来。Cassandra不是设定一个固定值来标记失败的节点，而是通过连续的计算单个节点的网络性能、工作量、以及其它条件来确定一个节点是否失败。节点失败的原因可能是硬件故障或者网络中断等，节点的中断通常是短暂的但有时也会持续比较久的时间。节点中断并不意味着这个节点永久不可用了，因此不会永久地从网络环中去除，其它节点会定期通过Gossip协议探测该节点是否恢复正常。如果想永久的去除，可以使用nodetool手工删除。
 
-当节点从中断中恢复过来后，它会缺少最近写入的数据，这部分数据由其它复制节点暂为保存，叫做Hinted Handoff，可以从这里进行自动恢复。但如果节点中断时间超过max_hint_window_in_ms（默认3小时）设定的值，这部分数据将会被丢弃，此时需要用nodetool repair在所有节点上手工执行数据修复，以保证数据的一致性。
+当节点从中断中恢复过来后，它会缺少最近写入的数据，这部分数据由其它复制节点暂为保存，叫做Hinted Handoff，可以从这里进行自动恢复。但如果节点中断时间超过`max_hint_window_in_ms`（默认3小时）设定的值，这部分数据将会被丢弃，此时需要用nodetool repair在所有节点上手工执行数据修复，以保证数据的一致性。
 
 ## 动态扩展
 
