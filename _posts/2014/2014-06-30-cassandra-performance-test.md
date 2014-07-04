@@ -1,10 +1,11 @@
 ---
 layout: post
-title: Cassandran性能测试
+title: Cassandra性能测试
 categories: tech
 tags: 
 - nosql
 - cassandra
+- performance
 ---
 
 DataStax官方给出了Cassandra和其它NoSQL性能测试对比，比如[这个](http://planetcassandra.org/blog/post/how-not-to-benchmark-cassandra-a-case-study/)，读写性能好几万TPS。也有其它NoSQL的[测试结果](http://blog.couchbase.com/mongodb-and-datastax-rearview-mirror)，说Cassandra性能并不出色。Cassandra的性能到底如何，还是要结合自己的实际业务场景和环境来亲自测试一下才会对它有更好的认识。
@@ -23,13 +24,17 @@ DataStax官方给出了Cassandra和其它NoSQL性能测试对比，比如[这个
 创建表结构如下：
 
 ```sql
+CREATE KEYSPACE test WITH replication = {
+  'class': 'SimpleStrategy',
+  'replication_factor': '2'
+};
+
 CREATE TABLE history (
   custom_id text,
   type text,
   datas list<text>,
   PRIMARY KEY (custom_id, type)
-) with replication={'class':'SimpleStrategy','replication_factor':1}
-
+);
 ```
 
 具体测试代码如下：
@@ -266,6 +271,61 @@ public static void main(String[] args) {
 写入： spendTime:262577,avg:0.262577,tps:3808.4
 读取： spendTime:537903,avg:0.537903,tps:1859.1
 ```
+### 场景六：多线程并发读写
+
+修改`main`函数，使用多线程进行读写：
+
+```java
+public static void main(String[] args) {
+        // singleThreadWrite();
+        // singleThreadRead();
+
+        for (int i = 0; i < 10; i++) {
+            Thread writeThread = new Thread() {
+
+                @Override
+                public void run() {
+                    singleThreadWrite();
+                }
+            };
+            writeThread.start();
+
+            Thread readThread = new Thread() {
+
+                @Override
+                public void run() {
+                    singleThreadRead();
+                }
+            };
+            readThread.start();
+        }
+    }
+```
+
+测试结果如下：
+
+```
+写入： spendTime:88289,avg:0.88289,tps:1132.6439307274973
+写入： spendTime:88310,avg:0.8831,tps:1132.3745895142113
+写入： spendTime:88640,avg:0.8864,tps:1128.158844765343
+写入： spendTime:88828,avg:0.88828,tps:1125.7711532399694
+写入： spendTime:92662,avg:0.92662,tps:1079.1910383976171
+写入： spendTime:93139,avg:0.93139,tps:1073.6640934517227
+写入： spendTime:111506,avg:1.11506,tps:896.8127275662296
+写入： spendTime:111651,avg:1.11651,tps:895.6480461437874
+写入： spendTime:113402,avg:1.13402,tps:881.8186628101797
+写入： spendTime:113439,avg:1.13439,tps:881.5310431156834
+读取： spendTime:163112,avg:1.63112,tps:613.0756780616999
+读取： spendTime:163176,avg:1.63176,tps:612.8352208658137
+读取： spendTime:163215,avg:1.63215,tps:612.6887847317955
+读取： spendTime:163326,avg:1.63326,tps:612.2723877398578
+读取： spendTime:163374,avg:1.63374,tps:612.0924994185121
+读取： spendTime:163438,avg:1.63438,tps:611.8528126873799
+读取： spendTime:163492,avg:1.63492,tps:611.6507229711546
+读取： spendTime:163541,avg:1.63541,tps:611.4674607590757
+读取： spendTime:168620,avg:1.6862,tps:593.0494603249911
+读取： spendTime:168671,avg:1.68671,tps:592.8701436524358
+```
 
 ## 测试场景--机械硬盘
 
@@ -315,4 +375,5 @@ and caching='ALL';
 * 读写同时进行时，读性能影响较大，即使Compaction和Row Cache已调整
 * Compcation对于读性能提升明显，但实际场景中不可能太频繁执行
 * 写性能受影响较小，不管是硬盘介质还是数据整理方式
+* 使用多线程可以线性提升整体的TPS，但写性能比读性能还是要好很多
 * 即使最差的情况，tps也比用MySQL快很多倍，并且代码更简单
