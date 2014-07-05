@@ -150,7 +150,7 @@ public class CassandraVelocityTest {
 
 ```
 
-## 测试场景--SSD硬盘
+## 测试场景--SSD硬盘本地测试
 
 |机器|操作系统| CPU|内存|硬盘|
 |----|------|----|----|----|
@@ -327,7 +327,7 @@ public static void main(String[] args) {
 读取： spendTime:168671,avg:1.68671,tps:592.8701436524358
 ```
 
-## 测试场景--机械硬盘
+## 测试场景--机械硬盘本地测试
 
 |机器|操作系统| CPU|内存|硬盘|
 |----|------|----|----|----|
@@ -368,6 +368,225 @@ and caching='ALL';
 读取： spendTime:788635,avg:0.788635,tps:1268.0 
 ```
 
+## 测试场景--机械硬盘远程测试
+
+上面都是在本地进行的测试，而线上肯定是要进行远程调用的，但服务器都在同一个局域网，按道理影响应该不大，但实际情况却差别很大。
+
+先按照官方推荐的线上配置对操作系统做一个优化：
+
+```
+# vi /etc/security/limits.d/ cassandra.conf
+cassandra - memlock unlimited
+cassandra - nofile 100000
+cassandra - nproc 32768
+cassandra - as unlimited
+
+# vi /etc/security/limits.d/90- nproc.conf 
+* - nproc 32768
+    
+# vi /etc/sysctl.conf 
+vm.max_map_count = 131072
+
+# sudo swapoff --all
+```
+
+另外，使用`LeveledCompactionStrategy`策略，读写各10个线程，测试结果如下：
+
+```
+写入： spendTime:509845,avg:5.09845,tps:196.13804195392717
+写入： spendTime:509844,avg:5.09844,tps:196.13842665599674
+写入： spendTime:509917,avg:5.09917,tps:196.1103473702583
+写入： spendTime:510141,avg:5.10141,tps:196.02423643659301
+写入： spendTime:510400,avg:5.104,tps:195.92476489028215
+写入： spendTime:516141,avg:5.16141,tps:193.74550752604426
+写入： spendTime:517032,avg:5.17032,tps:193.4116263596837
+写入： spendTime:517107,avg:5.17107,tps:193.3835743859588
+写入： spendTime:517407,avg:5.17407,tps:193.2714478157427
+写入： spendTime:518086,avg:5.18086,tps:193.01814756623418
+读取： spendTime:540177,avg:5.40177,tps:185.1245054861647
+读取： spendTime:540224,avg:5.40224,tps:185.10839947873473
+读取： spendTime:540491,avg:5.40491,tps:185.0169568040911
+读取： spendTime:540581,avg:5.40581,tps:184.98615378638908
+读取： spendTime:540654,avg:5.40654,tps:184.96117664902138
+读取： spendTime:540683,avg:5.40683,tps:184.95125609645578
+读取： spendTime:540801,avg:5.40801,tps:184.9109006825061
+读取： spendTime:544050,avg:5.4405,tps:183.80663541953865
+读取： spendTime:544485,avg:5.44485,tps:183.6597886075833
+读取： spendTime:544777,avg:5.44777,tps:183.56134712001423
+```
+
+结果让人大跌眼镜，和本地相比慢的不可思议，查看[官方文档](http://www.datastax.com/documentation/developer/java-driver/2.0/common/drivers/reference/connectionsOptions_c.html)看到，连接本地节点时初始化时的连接数据本地默认是2远程默认是1，最大连接数本地默认是8远程默认是2，通过测试发现，调整`MaxConnectionsPerHost`基本没有影响，增大`CoreConnectionsPerHost`倒是略有提升：
+
+```java
+builder.withPoolingOptions(new PoolingOptions()
+.setCoreConnectionsPerHost(HostDistance.REMOTE, 8)
+.setMaxConnectionsPerHost(HostDistance.REMOTE,8));
+```
+
+```
+写入： spendTime:244957,avg:4.89914,tps:204.1174573496573
+写入： spendTime:245042,avg:4.90084,tps:204.04665322679378
+写入： spendTime:245094,avg:4.90188,tps:204.00336197540537
+写入： spendTime:245116,avg:4.90232,tps:203.98505197539123
+写入： spendTime:249833,avg:4.99666,tps:200.13368930445537
+写入： spendTime:250071,avg:5.00142,tps:199.94321612662003
+写入： spendTime:250096,avg:5.00192,tps:199.92322947987972
+写入： spendTime:250227,avg:5.00454,tps:199.81856474321316
+写入： spendTime:250274,avg:5.00548,tps:199.78103998018173
+写入： spendTime:250500,avg:5.01,tps:199.6007984031936
+读取： spendTime:270812,avg:5.41624,tps:184.62992777277225
+读取： spendTime:270865,avg:5.4173,tps:184.593801340151
+读取： spendTime:273846,avg:5.47692,tps:182.58437223841136
+读取： spendTime:273869,avg:5.47738,tps:182.5690384819019
+读取： spendTime:273984,avg:5.47968,tps:182.4924083158141
+读取： spendTime:274228,avg:5.48456,tps:182.3300319442216
+读取： spendTime:274344,avg:5.48688,tps:182.25293791735922
+读取： spendTime:274362,avg:5.48724,tps:182.24098089385555
+读取： spendTime:274388,avg:5.48776,tps:182.22371240724814
+读取： spendTime:274727,avg:5.49454,tps:181.99885704717775
+```
+
+看起来是每次读写都要进行远程IO操作极大地影响了性能，为了减少网络开销，使用了Cassandra支持批量写操作的特性，另外优化读取也使用批量读取的方式，每次读取都合并10个数据批量处理，性能有明显提升。改造后的Java代码如下：
+
+```java
+   public static void singleThreadWrite() {
+        long start = System.currentTimeMillis();
+        Builder builder = Cluster.builder();
+        builder.withPoolingOptions(new PoolingOptions().setCoreConnectionsPerHost(HostDistance.REMOTE, 8).setMaxConnectionsPerHost(HostDistance.REMOTE,
+                                                                                                                                   8));
+        builder.withSocketOptions(new SocketOptions().setKeepAlive(true).setReceiveBufferSize(100 * 1024 * 1024).setTcpNoDelay(true));
+        builder.addContactPoints("192.168.6.201");
+
+        Cluster cluster = builder.build();
+
+        Metadata metadata = cluster.getMetadata();
+        System.out.printf("Connected to cluster: %s\n", metadata.getClusterName());
+
+        int count = 50000;
+        Session session = cluster.connect();
+        for (int i = 0; i < count; i += 10) {
+            StringBuffer sb = new StringBuffer();
+            sb.append("BEGIN BATCH\n");
+            for (int j = 0; j < 10; j++) {
+                String customId = generateRandomIp();
+                String type = "ip";
+                String newContent = generateRandomContent();
+                sb.append("update test.history using ttl 86400 set txns = txns +['");
+                sb.append(newContent);
+                sb.append("']  where type='");
+                sb.append(type);
+                sb.append("' and custom_id='");
+                sb.append(customId);
+                sb.append("';\n");
+            }
+            sb.append("APPLY BATCH;");
+            session.execute(sb.toString());
+            if (i % 10000 == 0) {
+                SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+                String cur = sdf.format(new Date());
+                System.out.println("[" + cur + "] write:" + i);
+            }
+        }
+        session.close();
+        cluster.close();
+        long end = System.currentTimeMillis();
+        long spendTime = end - start;
+        System.out.println("写入： spendTime:" + spendTime + ",avg:" + ((double) spendTime / count) + ",tps:"
+                           + (count / ((double) spendTime / 1000)));
+    }
+
+    public static void singleThreadRead() {
+        long start = System.currentTimeMillis();
+        Builder builder = Cluster.builder();
+        // builder.withClusterName("test_cluster");
+        builder.withLoadBalancingPolicy(LatencyAwarePolicy.builder(new RoundRobinPolicy()).build());
+        builder.withProtocolVersion(2);
+        builder.withQueryOptions(new QueryOptions().setConsistencyLevel(ConsistencyLevel.ONE));
+        builder.withReconnectionPolicy(new ConstantReconnectionPolicy(1000));
+        builder.withRetryPolicy(FallthroughRetryPolicy.INSTANCE);
+        builder.withPoolingOptions(new PoolingOptions().setCoreConnectionsPerHost(HostDistance.REMOTE, 8).setMaxConnectionsPerHost(HostDistance.REMOTE,
+                                                                                                                                   8));
+        builder.withSocketOptions(new SocketOptions().setKeepAlive(true).setReceiveBufferSize(100 * 1024 * 1024).setTcpNoDelay(true));
+        builder.addContactPoints("192.168.6.201");
+
+        Cluster cluster = builder.build();
+
+        Metadata metadata = cluster.getMetadata();
+        System.out.printf("Connected to cluster: %s\n", metadata.getClusterName());
+
+        Session session = cluster.connect();
+        PreparedStatement ps = session.prepare("select * from test.history  where custom_id in (?,?,?,?,?,?,?,?,?,?)  and type=?");
+        BoundStatement boundStatement = new BoundStatement(ps);
+
+        int count = 50000;
+        for (int i = 0; i < count; i += 10) {
+            String type = "ip";
+            String[] customIds = new String[10];
+            for (int j = 0; j < 10; j++) {
+                customIds[j] = generateRandomIp();
+            }
+            BoundStatement bind = boundStatement.bind(customIds[0], customIds[1], customIds[2], customIds[3],
+                                                      customIds[4], customIds[5], customIds[6], customIds[7],
+                                                      customIds[8], customIds[9], type);
+            ResultSet results = session.execute(bind);
+            for (Row row : results) {
+                // System.out.println("i:" + i + "," + row.getString("custom_id"));
+                row.getList("txns", String.class);
+            }
+
+            if (i % 10000 == 0) {
+                SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
+                String cur = sdf.format(new Date());
+                System.out.println("[" + cur + "] read:" + i);
+            }
+        }
+        cluster.close();
+        long end = System.currentTimeMillis();
+        long spendTime = end - start;
+        System.out.println("读取： spendTime:" + spendTime + ",avg:" + ((double) spendTime / count) + ",tps:"
+                           + (count / ((double) spendTime / 1000)));
+
+    }
+```
+
+测试结果如下：
+
+```
+写入： spendTime:54728,avg:1.09456,tps:913.6091214734688
+写入： spendTime:54806,avg:1.09612,tps:912.3088712914645
+写入： spendTime:54817,avg:1.09634,tps:912.1258003903898
+写入： spendTime:55021,avg:1.10042,tps:908.7439341342397
+写入： spendTime:55095,avg:1.1019,tps:907.5233687267447
+写入： spendTime:55143,avg:1.10286,tps:906.7334022450719
+写入： spendTime:55177,avg:1.10354,tps:906.1746742302046
+写入： spendTime:55206,avg:1.10412,tps:905.6986559431946
+写入： spendTime:55237,avg:1.10474,tps:905.1903615330303
+写入： spendTime:55241,avg:1.10482,tps:905.1248167122246
+读取： spendTime:70007,avg:1.40014,tps:714.2142928564286
+读取： spendTime:70020,avg:1.4004,tps:714.0816909454442
+读取： spendTime:70060,avg:1.4012,tps:713.6739937196688
+读取： spendTime:70118,avg:1.40236,tps:713.083658974871
+读取： spendTime:70153,avg:1.40306,tps:712.7278947443444
+读取： spendTime:70154,avg:1.40308,tps:712.7177352681244
+读取： spendTime:70159,avg:1.40318,tps:712.6669422312176
+读取： spendTime:70166,avg:1.40332,tps:712.595844141037
+读取： spendTime:70181,avg:1.40362,tps:712.4435388495461
+读取： spendTime:70199,avg:1.40398,tps:712.2608584167866
+```
+
+## 测试场景--MySQL测试
+使用和Cassandra类似的场景，多线程读写MySQL远程数据库，一个插入线程一个更新线程一个读线程运行结果如下：
+
+```
+读取： spendTime:1038124,avg:1.038124,tps:963.2760633604463插入： spendTime:1834581,avg:1.834581,tps:545.0835912941429更新： spendTime:2805814,avg:2.805814,tps:356.4028121607491
+```
+
+读写各10个线程测试结果如下：
+
+```
+
+```
+
 ## 测试结论
 
 * SSD性能是好于传统机械硬盘，但提升的空间并没有预期的大
@@ -376,4 +595,5 @@ and caching='ALL';
 * Compcation对于读性能提升明显，但实际场景中不可能太频繁执行
 * 写性能受影响较小，不管是硬盘介质还是数据整理方式
 * 使用多线程可以线性提升整体的TPS，但写性能比读性能还是要好很多
-* 即使最差的情况，tps也比用MySQL快很多倍，并且代码更简单
+* 尽量使用批量操作，可以减少网络IO开销，极大提升性能
+* Cassandra在写入上有极大的优势，并且在高并发下性能更好
