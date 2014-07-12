@@ -17,3 +17,7 @@ tags:
 
 ## Memtable->SSTable
 ![memtable to sstable](http://yikebocai.com/myimg/cassandra-memtable-to-sstable.jpg)
+
+## 一个节点读取失败
+
+![one failture](http://yikebocai.com/myimg/cassandra-read-cl-one-failure.png)
