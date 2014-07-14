@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Cassandra源代码学习之一-Eclipse环境准备和数据更新
+title: Cassandra源代码学习之一：Eclipse环境准备和数据更新
 categories: tech
 tags: 
 - cassandra
