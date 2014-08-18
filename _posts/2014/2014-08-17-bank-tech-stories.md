@@ -1,5 +1,5 @@
 ---
-layout:post
+layout: post
 title: 银行IT技术见闻
 categories: life
 tags: 
