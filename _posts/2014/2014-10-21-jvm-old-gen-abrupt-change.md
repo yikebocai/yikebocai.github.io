@@ -57,8 +57,8 @@ public class Trace{
 ```
 
 经过比较久的等待，终于捕捉到了这样问题，打印内容如下：
-```
 
+```
 java.io.ByteArrayOutputStream.grow(ByteArrayOutputStream.java:114)
 java.io.ByteArrayOutputStream.ensureCapacity(ByteArrayOutputStream.java:93)
 java.io.ByteArrayOutputStream.write(ByteArrayOutputStream.java:140)
@@ -105,8 +105,8 @@ count: 582483965
 ```
 
 同时，也观察到了，buf是在不断增加的：
-```
 
+```
 minCapacity: 1137665
 14-10-17 下午5:00
 ----------------
@@ -171,6 +171,7 @@ minCapacity: 582483970
 到此为止，基本可以确定，是往本地队列放入对象做序列化导致的，但是令人纳闷的是放入的对象不可能很大，难道是有些对象比较特殊，导致的序列化bug所致？
 
 首先想到时既然序列化时导致buf数组非常大，从源代码看到序列化后会返回buf中count个byte，因此想监控序列化后的byte数组大小，如果比较大就把原始内容打印出来看看到底是什么东西，结果发布到线上后一直无法触发，代码如下：
+
 ```java
 byte[] bs = SerializationUtils.serialize(elm);
 if (bs.length>10000000) {
@@ -180,6 +181,7 @@ if (bs.length>10000000) {
 ```
 
 换了一种方法，既然内存是突然升高的，又是序列化导致的，就做了内存的监控，但也无法触发，放大监控图仔细看Old区的变化，发现也不是直线上升一下子就提上去的，大约经历一分钟涨上去，测试代码如下：
+
 ```java
 byte[] bs = SerializationUtils.serialize(elm);
 if (freeMemory - Runtime.getRuntime().freeMemory() > 500 * 1024 * 1024) {
