@@ -12,10 +12,12 @@ tags:
 网上搜索到比较多的就是使用[Lua](http://www.lua.org/)脚本来对Nginx进行功能扩展，但最初稍微看了一下，觉得有点麻烦还要重新学习一门新的语言，于是想找一下看有没有其它语言的组件，最好是我熟悉的Java语言，没想到还被我从Nginx的扩展列表中找到了，叫作[nginx-clojure](http://nginx-clojure.github.io/)，不过看了一下有点重，使用了[Ring](https://github.com/mmcgrana/ring)框架，虽然之前玩过一段Clojure，但还是感觉比较麻烦，最终还是转回了Lua，其实它还是挺简单的，很快就能上手。
 
 第一步是先安装Nginx需要的一些类库：
+
 ```
 yum install gcc
 yum install gcc-c++
 ```
+
 然后，编译安装[pcre-8.34](http://sourceforge.net/projects/pcre/files/pcre/8.34/)和[zlib-1.2.8](http://fossies.org/linux/misc/zlib-1.2.8.tar.gz/)，接着安装Lua编译库[LuaJit-2.0.3](http://luajit.org/download.html)：
 
 ```
@@ -82,6 +84,7 @@ proxy_pass http://backup;
 ```
 
 Nginx的执行过程有十一个，主要的执行过程包括：
+
 * **rewrite** ：重写URI及参数，我们的实现就是在这个过程中，Lua脚本对应的是`rewrite_by_lua`，它会在Nginx的rewrite内容的最后面执行
 * **access** ：主要做一些权限校验和控制，Lua脚本对应的是`access_by_lua`
 * **content** ：对内容的处理，Lua脚本对应的是`content_by_lua`
