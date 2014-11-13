@@ -90,3 +90,9 @@ Nginx的执行过程有十一个，主要的执行过程包括：
 * **content** ：对内容的处理，Lua脚本对应的是`content_by_lua`
 
 因为Lua脚本里的时间戳函数`os.time()`只能精确到秒，如果要想到毫秒必须自己安装另外的三方库luasocket，为了取一个毫秒数不太值得，查了一下文档发现Nginx内置的`ngx.now()`也可以得到毫秒数。用`math.random(10000000,100000000)`得到一个8位随机数，以避免同一时刻生成的SeqId会重复。调用`ngx.req.get_uri_args()`可以得到GET请求中URL里的所有参数，返回结果是一个Table，和Java中的Map很类似，然后直接新增一个KV值，将新生成的SeqId添加进行，再调用`ngx.req.set_uri_args(args)`进行重设，就完成了SeqId的生成。
+
+**参考资料**
+
+* [agentzh 的 Nginx 教程](http://openresty.org/download/agentzh-nginx-tutorials-zhcn.html)
+* [HttpLuaModule文档说明](http://wiki.nginx.org/HttpLuaModule)
+* [Lua 5.2 Reference Manual](http://www.lua.org/manual/5.2/)
