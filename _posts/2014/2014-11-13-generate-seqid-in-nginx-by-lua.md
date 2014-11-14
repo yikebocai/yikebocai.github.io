@@ -32,7 +32,7 @@ export LUAJIT_LIB=/usr/install/luajit/lib
 export LUAJIT_INC=/usr/install/luajit/include/luajit-2.0
 ```
 
-下载 [ngx_devel_kit](https://github.com/ildus/nginx_redis/tree/master/ngx_devel_kit-0.2.19) 和 [lua-nginx-module](https://github.com/openresty/lua-nginx-module/tags)，最后编译Nginx：
+下载 [ngx\_devel\_kit](https://github.com/simpl/ngx_devel_kit/tags) 和 [lua-nginx-module](https://github.com/openresty/lua-nginx-module/tags)，最后编译Nginx：
 
 ```
 # nginx-1.6.0
