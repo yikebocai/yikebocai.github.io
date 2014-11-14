@@ -91,6 +91,16 @@ Nginx的执行过程有十一个，主要的执行过程包括：
 
 因为Lua脚本里的时间戳函数`os.time()`只能精确到秒，如果要想到毫秒必须自己安装另外的三方库luasocket，为了取一个毫秒数不太值得，查了一下文档发现Nginx内置的`ngx.now()`也可以得到毫秒数。用`math.random(10000000,100000000)`得到一个8位随机数，以避免同一时刻生成的SeqId会重复。调用`ngx.req.get_uri_args()`可以得到GET请求中URL里的所有参数，返回结果是一个Table，和Java中的Map很类似，然后直接新增一个KV值，将新生成的SeqId添加进行，再调用`ngx.req.set_uri_args(args)`进行重设，就完成了SeqId的生成。
 
+完成上述配置后，Nginx在把请求转发到Tomcat时，就会带上这个SeqId的参数，但是你会发现Nginx自己的access日志中并没有生成，这里需要自己获取一下这个参数`$arg_nginx_seq_id`，因为日志中的`$request`取的应该是原始请求URI，是无法显示出自己在rewrite阶段添加的参数。
+
+```
+log_format  main  '$remote_addr - [$time_local] "$request seq_id=$arg_nginx_seq_id" '
+                      '$status $body_bytes_sent '
+                      '"$request_time" "$upstream_response_time" "$upstream_addr" "$request_body "';
+```
+
+`arg_XXX`是系列变量，XXX指的是提交的参数名字，可以使用这样的方式方便地获取请求值，类似的还有`cookie_XXX`，更多请参考第一篇参考资料。
+
 **参考资料**
 
 * [agentzh 的 Nginx 教程](http://openresty.org/download/agentzh-nginx-tutorials-zhcn.html)
