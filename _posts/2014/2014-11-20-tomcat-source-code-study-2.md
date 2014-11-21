@@ -60,8 +60,35 @@ find .|grep '\.java$'|grep -v test|grep -v examples|grep -v modules|xargs grep '
   4）使用反射的方法，调用catalinaDaemon.start()启动Server
      - 调用startInternal()方法，启动所有service，这里默认是StandardService#start()
      - 调用LifecycleBase#start()方法
-       - 调用startInteral()方法
-         - 调用container.start()启动Engine
+       - 调用startInteral()方法 
+         - 调用（StandardEngine）container.start()启动Engine
+           - 调用StandardEngine#startInternal()
+             - 调用父类ContainerBase#startInternal()
+               - 执行findChildren()方法获取子容器，比如StandardHost的实例
+               - 将这些子容器用StartChild类包装成Callable的类，使用线程池启动
+                 - 调用StartChild#call()方法
+                   - 调用StandardHost#start()方法启动Host
+                     - 调用StandardHost#startInternal()
+                       - 调用getPipeline().addValve()增加ErrorReportValve
+                       - 调用super.startInternal()使用父类ContainerBase的启动方法部署应用
+                         - 调用setState() 方法设置Context，这个方法有有点误导人，它里面其实做了很多工作，不仅仅是设置个状态值
+                           - 调用LifecyleBase#setStateInternal()
+                             - 调用fireLifeCycleEvent(“start”,null)
+                               - 调用LifecycleSurpport#fireLifecycleEvent()
+                                 - 获取注册过的侦听器，这里是HostConfig
+                                   - 调用HostConfig#lifecycleEvent()
+                                     - 调用start()方法
+                                       - 调用deployApps()部署应用
+                                         - 调用deployWARs()部署war包
+                                         - 调用deployDirectories()部署解压后的目录
+                                           - 获取webapps目录下的所有目录，比如docs, examples, host-manager, manager, ROOT
+                                        - 将之用实现Callable接口的DeployDirectory包装，放入到线程池中启动
+                                          - 调用DeployDirectory#run()方法启动线程
+                                            - 调用HostConfig#deployDirectories(ContextName,File)
+                                              - 调用digester.parse(“webapps/docs/META-INF/context.xml")创建一个StandardContext实例
+                                              - 调用host.addChild(context)将之增加到StandardHost实例中
+                                                - 调用ContainerBase#addChildInternal()
+                                                  - 调用child.start()启动StandardContext
          - 调用executor.start()启动Executor
          - 调用connector.start()启动Connector
            - 调用startInternal()
