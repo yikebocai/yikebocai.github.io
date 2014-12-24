@@ -72,7 +72,7 @@ Cassandra不依赖Web容器，直接通过`main`函数启动，想要找到它�
 
 ## 更新步骤
 
-CassandraDaemon启动后，首先会执行`setup()`方法进行初始化设置，比如JVM的检查、数据目录文件的检查、存储引擎初始化，如有必要还要做Commit Log的日志回放等，并在最后调用在`start()`方法中调用 `nativeServer.start()`和`thriftServer.start()`方法来启动本地服务和Thrift服务。前者通过Thrift接口进行通讯，比如像Cassandra自带的cqlsh，以及Java驱动Hector、Asyantax等都是通过这种协议来进行远程访问，好处是跨平台但缺点就是可能性能不太高，后者通过cql原生二进制协议来通讯，使用了高性能的Netty框架，比如官方的驱动程序DataStax java driver 2.0就是采用了后一种。官方的说明文档中明确表达最好使用后者，有更好的性能。
+CassandraDaemon启动后，首先会执行`setup()`方法进行初始化设置，比如JVM的检查、数据目录文件的检查、存储引擎初始化，如有必要还要做Commit Log的日志回放等，并在最后调用在`start()`方法中调用`thriftServer.start()`和`nativeServer.start()`方法来启动本地服务和Thrift服务。前者通过Thrift接口进行通讯，比如像Cassandra自带的cqlsh，以及Java驱动Hector、Asyantax等都是通过这种协议来进行远程访问，好处是跨平台但缺点就是可能性能不太高，后者通过cql原生二进制协议来通讯，使用了高性能的Netty框架，比如官方的驱动程序DataStax java driver 2.0就是采用了后一种。官方的说明文档中明确表达最好使用后者，有更好的性能。
 
   
 
