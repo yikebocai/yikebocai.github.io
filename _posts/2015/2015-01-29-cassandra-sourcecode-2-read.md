@@ -845,6 +845,664 @@ QUERY SELECT * FROM forseti.mytab where id='a1'
     }
 ```
 
-在`注1`处启动SEPWorker线程，进行数据的读取。
+在`注1`处启动SEPWorker线程，进行数据的读取，上面过程的整个调用栈如下。你会发现这个调用栈也是一个SEPWorker，看来Cassandra把把请求处理也封闭成了一个任务，放到`SharedExectorPool`中，由异步线程来执行：
 
-从上面的代码看起来，启动异步线程读取SSTable的过程非常复杂。
+```
+Daemon Thread [SharedPool-Worker-1] (Suspended (breakpoint at line 169 in SEPWorker))	
+	SEPWorker.assign(SEPWorker$Work, boolean) line: 169	
+	JMXEnabledSharedExecutorPool(SharedExecutorPool).schedule(SEPWorker$Work) line: 83	
+	JMXEnabledSharedExecutorPool(SharedExecutorPool).maybeStartSpinningWorker() line: 96	
+	JMXEnabledSharedExecutorPool$JMXEnabledSEPExecutor(SEPExecutor).addTask(FutureTask<?>) line: 103	
+	JMXEnabledSharedExecutorPool$JMXEnabledSEPExecutor(SEPExecutor).maybeExecuteImmediately(Runnable) line: 185	
+	AbstractReadExecutor$NeverSpeculatingReadExecutor(AbstractReadExecutor).makeDataRequests(Iterable<InetAddress>) line: 96	
+	AbstractReadExecutor$NeverSpeculatingReadExecutor.executeAsync() line: 215	
+	StorageProxy.fetchRows(List<ReadCommand>, ConsistencyLevel) line: 1239	
+	StorageProxy.read(List<ReadCommand>, ConsistencyLevel) line: 1180	
+	SliceQueryPager.queryNextPage(int, ConsistencyLevel, boolean) line: 85	
+	SliceQueryPager(AbstractQueryPager).fetchPage(int) line: 87	
+	SliceQueryPager.fetchPage(int) line: 1	
+	SelectStatement.execute(QueryState, QueryOptions) line: 224	
+	SelectStatement.execute(QueryState, QueryOptions) line: 1	
+	QueryProcessor.processStatement(CQLStatement, QueryState, QueryOptions) line: 186	
+	QueryProcessor.process(String, QueryState, QueryOptions) line: 205	
+	QueryMessage.execute(QueryState) line: 117	
+	Message$Dispatcher.channelRead0(ChannelHandlerContext, Message$Request) line: 373	
+	Message$Dispatcher.channelRead0(ChannelHandlerContext, Object) line: 1	
+	Message$Dispatcher(SimpleChannelInboundHandler<I>).channelRead(ChannelHandlerContext, Object) line: 103	
+	DefaultChannelHandlerContext(AbstractChannelHandlerContext).invokeChannelRead(Object) line: 332	
+	AbstractChannelHandlerContext.access$700(AbstractChannelHandlerContext, Object) line: 31	
+	AbstractChannelHandlerContext$8.run() line: 323	
+	Executors$RunnableAdapter<T>.call() line: 471	
+	AbstractTracingAwareExecutorService$FutureTask<T>.run() line: 162	
+	SEPWorker.run() line: 103	
+	Thread.run() line: 744	
+
+```
+
+## SSTABLE读取
+
+下面的数据读取异步线程，首先进入SEPWorker的`run()`方法：
+
+```java
+    public void run()
+    {
+        
+        ...
+        
+        // 注1
+        task.run();
+        task = null;
+
+        ...
+    }
+```
+
+在`注1`处启动一个类型为`org.apache.cassandra.concurrent.AbstractTracingAwareExecutorService$FutureTask`的任务，然后会调用`java.util.concurrent.Executors$RunnableAdapter`的实例`callable`，如`注1`处所示，之后进入`注2`处。此处应该是一个特殊的处理，无法继续Debug进入。
+
+```java
+        public void run()
+        {
+            try
+            {
+                // 注1
+                result = callable.call();
+            }
+            catch (Throwable t)
+            {
+                logger.warn("Uncaught exception on thread {}: {}", Thread.currentThread(), t);
+                result = t;
+                failure = true;
+            }
+            finally
+            {
+                signalAll();
+                onCompletion();
+            }
+        }
+        
+        
+   static final class RunnableAdapter<T> implements Callable<T> {
+        final Runnable task;
+        final T result;
+        RunnableAdapter(Runnable task, T result) {
+            this.task = task;
+            this.result = result;
+        }
+        public T call() {
+            // 注2
+            task.run();
+            return result;
+        }
+    }
+
+```
+
+随后将进入`StorageProxy$DroppableRunnable `的`注1`和`StorageProxy$LocalReadRunnable`的`注2`处，此时才又真正回归到具体的业务逻辑处理上来，前面的异步线程处理逻辑实在有点复杂。
+
+```java
+    private static abstract class DroppableRunnable implements Runnable
+    {
+       
+        public final void run()
+        {
+            try
+            {
+                if (TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - constructionTime) > DatabaseDescriptor.getTimeout(verb))
+                {
+                    MessagingService.instance().incrementDroppedMessages(verb);
+                    return;
+                }
+
+                try
+                {   // 注1
+                    runMayThrow();
+                } catch (Exception e)
+                {
+                    throw new RuntimeException(e);
+                }
+            }
+            finally
+            {
+                cleanup();
+            }
+        }
+
+    }
+
+
+    static class LocalReadRunnable extends DroppableRunnable
+    {
+       
+
+        protected void runMayThrow()
+        {
+            Keyspace keyspace = Keyspace.open(command.ksName);
+            
+            //注2
+            Row r = command.getRow(keyspace);
+            ReadResponse result = ReadVerbHandler.getResponse(command, r);
+            MessagingService.instance().addLatency(FBUtilities.getBroadcastAddress(), TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
+            handler.response(result);
+        }
+    }
+```
+
+上面的`command`变量是`SliceFromReadCommand`类的实例，然后直接调用`Keyspace`的`getRow()`方法，具体方法如下：
+
+```java
+    public Row getRow(Keyspace keyspace)
+    {
+        DecoratedKey dk = StorageService.getPartitioner().decorateKey(key);
+        return keyspace.getRow(new QueryFilter(dk, cfName, filter, timestamp));
+    }
+```
+
+然后在`注1`处获取`ColumnFamily`的返回对象，此时数据已读取完毕，代码如下：
+
+```java
+    public Row getRow(QueryFilter filter)
+    {
+        ColumnFamilyStore cfStore = getColumnFamilyStore(filter.getColumnFamilyName());
+        
+        //注1
+        ColumnFamily columnFamily = cfStore.getColumnFamily(filter);
+        return new Row(filter.key, columnFamily);
+    }
+```
+
+之后进入到`ColumnFamilyStore`的方法中，从`注1`处可以看到，如果开启了`RowCache`，直接从`RowCache`中获取结果，否则走`注2`处的代码，并走到`注3`处：
+```java
+    public ColumnFamily getColumnFamily(QueryFilter filter) {
+        assert name.equals(filter.getColumnFamilyName()) : filter.getColumnFamilyName();
+
+        ColumnFamily result = null;
+
+        long start = System.nanoTime();
+        try {
+            int gcBefore = gcBefore(filter.timestamp);
+            
+            // 注1
+            if (isRowCacheEnabled()) {
+                assert !isIndex(); // CASSANDRA-5732
+                UUID cfId = metadata.cfId;
+
+                ColumnFamily cached = getThroughCache(cfId, filter);
+                if (cached == null) {
+                    logger.trace("cached row is empty");
+                    return null;
+                }
+
+                result = cached;
+            } else {
+                // 注2
+                ColumnFamily cf = getTopLevelColumns(filter, gcBefore);
+
+                if (cf == null) return null;
+
+                result = removeDeletedCF(cf, gcBefore);
+            }
+
+            ... 
+    }
+    
+        public ColumnFamily getTopLevelColumns(QueryFilter filter, int gcBefore) {
+        Tracing.trace("Executing single-partition query on {}", name);
+        CollationController controller = new CollationController(this, filter, gcBefore);
+        ColumnFamily columns;
+        try (OpOrder.Group op = readOrdering.start()) {
+            // 注3
+            columns = controller.getTopLevelColumns(Memtable.MEMORY_POOL.needToCopyOnHeap());
+        }
+        metric.updateSSTableIterated(controller.getSstablesIterated());
+        return columns;
+    }
+```
+
+下面进入到`CollationController`的`collectAllData()`方法中，如`注1`处所示。在这个方法中会对获取的数据进行合并处理，主要是`Memtable`和`SSTable`中读取到的数据的合并，并且可能会有多个`Memtable`和`SSTable`，所以从`注2`和`注3`处可以看到会有一个循环。`Memtable`在测试时并没有数据，这块会直接跳过，`SSTable`可能会有多个对应的文件，比如：
+
+```
+cassandra/cdata/data/forseti/mytab-02cde5108b5011e4a88bd19b1a65c2ff/forseti-mytab-ka-4-Data.db
+cassandra/cdata/data/forseti/mytab-02cde5108b5011e4a88bd19b1a65c2ff/forseti-mytab-ka-2-Data.db
+cassandra/cdata/data/forseti/mytab-02cde5108b5011e4a88bd19b1a65c2ff/forseti-mytab-ka-1-Data.db
+```
+
+在`注4`处会获取数据读取的一个迭代器，但真正从磁盘文件读取数据会在`注5`处执行：
+
+```java
+    public ColumnFamily getTopLevelColumns(boolean copyOnHeap)
+    {
+        return filter.filter instanceof NamesQueryFilter
+               && cfs.metadata.getDefaultValidator() != CounterColumnType.instance
+               ? collectTimeOrderedData(copyOnHeap)
+               //注1
+               : collectAllData(copyOnHeap);
+    }
+    
+       private ColumnFamily collectAllData(boolean copyOnHeap)
+    {
+        Tracing.trace("Acquiring sstable references");
+        ColumnFamilyStore.ViewFragment view = cfs.select(cfs.viewFilter(filter.key));
+        List<Iterator<? extends OnDiskAtom>> iterators = new ArrayList<>(Iterables.size(view.memtables) + view.sstables.size());
+        ColumnFamily returnCF = ArrayBackedSortedColumns.factory.create(cfs.metadata, filter.filter.isReversed());
+        DeletionInfo returnDeletionInfo = returnCF.deletionInfo();
+        try
+        {
+            Tracing.trace("Merging memtable tombstones");
+            // 注2
+            for (Memtable memtable : view.memtables)
+            {
+                final ColumnFamily cf = memtable.getColumnFamily(filter.key);
+                if (cf != null)
+                {
+                    filter.delete(returnDeletionInfo, cf);
+                    Iterator<Cell> iter = filter.getIterator(cf);
+                    if (copyOnHeap)
+                    {
+                        iter = Iterators.transform(iter, new Function<Cell, Cell>()
+                        {
+                            public Cell apply(Cell cell)
+                            {
+                                return cell.localCopy(cf.metadata, HeapAllocator.instance);
+                            }
+                        });
+                    }
+                    iterators.add(iter);
+                }
+            }
+
+            /*
+             * We can't eliminate full sstables based on the timestamp of what we've already read like
+             * in collectTimeOrderedData, but we still want to eliminate sstable whose maxTimestamp < mostRecentTombstone
+             * we've read. We still rely on the sstable ordering by maxTimestamp since if
+             *   maxTimestamp_s1 > maxTimestamp_s0,
+             * we're guaranteed that s1 cannot have a row tombstone such that
+             *   timestamp(tombstone) > maxTimestamp_s0
+             * since we necessarily have
+             *   timestamp(tombstone) <= maxTimestamp_s1
+             * In other words, iterating in maxTimestamp order allow to do our mostRecentTombstone elimination
+             * in one pass, and minimize the number of sstables for which we read a rowTombstone.
+             */
+            Collections.sort(view.sstables, SSTableReader.maxTimestampComparator);
+            List<SSTableReader> skippedSSTables = null;
+            long mostRecentRowTombstone = Long.MIN_VALUE;
+            long minTimestamp = Long.MAX_VALUE;
+            int nonIntersectingSSTables = 0;
+
+            // 注3
+            for (SSTableReader sstable : view.sstables)
+            {
+                minTimestamp = Math.min(minTimestamp, sstable.getMinTimestamp());
+                // if we've already seen a row tombstone with a timestamp greater
+                // than the most recent update to this sstable, we can skip it
+                if (sstable.getMaxTimestamp() < mostRecentRowTombstone)
+                    break;
+
+                if (!filter.shouldInclude(sstable))
+                {
+                    nonIntersectingSSTables++;
+                    // sstable contains no tombstone if maxLocalDeletionTime == Integer.MAX_VALUE, so we can safely skip those entirely
+                    if (sstable.getSSTableMetadata().maxLocalDeletionTime != Integer.MAX_VALUE)
+                    {
+                        if (skippedSSTables == null)
+                            skippedSSTables = new ArrayList<>();
+                        skippedSSTables.add(sstable);
+                    }
+                    continue;
+                }
+
+                sstable.incrementReadCount();
+                // 注4
+                OnDiskAtomIterator iter = filter.getSSTableColumnIterator(sstable);
+                iterators.add(iter);
+                if (iter.getColumnFamily() != null)
+                {
+                    ColumnFamily cf = iter.getColumnFamily();
+                    if (cf.isMarkedForDelete())
+                        mostRecentRowTombstone = cf.deletionInfo().getTopLevelDeletion().markedForDeleteAt;
+
+                    returnCF.delete(cf);
+                    sstablesIterated++;
+                }
+            }
+
+            int includedDueToTombstones = 0;
+            // Check for row tombstone in the skipped sstables
+            if (skippedSSTables != null)
+            {
+                for (SSTableReader sstable : skippedSSTables)
+                {
+                    if (sstable.getMaxTimestamp() <= minTimestamp)
+                        continue;
+
+                    sstable.incrementReadCount();
+                    OnDiskAtomIterator iter = filter.getSSTableColumnIterator(sstable);
+                    ColumnFamily cf = iter.getColumnFamily();
+                    // we are only interested in row-level tombstones here, and only if markedForDeleteAt is larger than minTimestamp
+                    if (cf != null && cf.deletionInfo().getTopLevelDeletion().markedForDeleteAt > minTimestamp)
+                    {
+                        includedDueToTombstones++;
+                        iterators.add(iter);
+                        returnCF.delete(cf.deletionInfo().getTopLevelDeletion());
+                        sstablesIterated++;
+                    }
+                    else
+                    {
+                        FileUtils.closeQuietly(iter);
+                    }
+                }
+            }
+            if (Tracing.isTracing())
+                Tracing.trace("Skipped {}/{} non-slice-intersecting sstables, included {} due to tombstones", new Object[] {nonIntersectingSSTables, view.sstables.size(), includedDueToTombstones});
+            // we need to distinguish between "there is no data at all for this row" (BF will let us rebuild that efficiently)
+            // and "there used to be data, but it's gone now" (we should cache the empty CF so we don't need to rebuild that slower)
+            if (iterators.isEmpty())
+                return null;
+
+            // 注5
+            Tracing.trace("Merging data from memtables and {} sstables", sstablesIterated);
+            filter.collateOnDiskAtom(returnCF, iterators, gcBefore);
+
+            // Caller is responsible for final removeDeletedCF.  This is important for cacheRow to work correctly:
+            return returnCF;        
+    }
+```
+
+下面进入到`QueryFilter`类中：
+
+```java
+    public void collateOnDiskAtom(ColumnFamily returnCF,
+                                  List<? extends Iterator<? extends OnDiskAtom>> toCollate,
+                                  int gcBefore)
+    {
+        // 注1
+        collateOnDiskAtom(returnCF, toCollate, filter, gcBefore, timestamp);
+    }
+    
+       public static void collateOnDiskAtom(ColumnFamily returnCF,
+                                         List<? extends Iterator<? extends OnDiskAtom>> toCollate,
+                                         IDiskAtomFilter filter,
+                                         int gcBefore,
+                                         long timestamp)
+    {
+        List<Iterator<Cell>> filteredIterators = new ArrayList<>(toCollate.size());
+        for (Iterator<? extends OnDiskAtom> iter : toCollate)
+            filteredIterators.add(gatherTombstones(returnCF, iter));
+        collateColumns(returnCF, filteredIterators, filter, gcBefore, timestamp);
+    }
+
+    public static void collateColumns(ColumnFamily returnCF,
+                                      List<? extends Iterator<Cell>> toCollate,
+                                      IDiskAtomFilter filter,
+                                      int gcBefore,
+                                      long timestamp)
+    {
+        Comparator<Cell> comparator = filter.getColumnComparator(returnCF.getComparator());
+
+        Iterator<Cell> reduced = toCollate.size() == 1
+                               ? toCollate.get(0)
+                               //注3
+                               : MergeIterator.get(toCollate, comparator, getReducer(comparator));
+
+        filter.collectReducedColumns(returnCF, reduced, gcBefore, timestamp);
+    }
+
+```
+
+从上面的`注3`处进入到`MergeIterator`类，在下面的`注1`处创建一个对象，在这个对象创建过程中会完成数据的读取，这个地方不仔细分析是点有迷惑的。
+
+```java
+    public static <In, Out> IMergeIterator<In, Out> get(List<? extends Iterator<In>> sources,
+                                                        Comparator<In> comparator,
+                                                        Reducer<In, Out> reducer)
+    {
+        if (sources.size() == 1)
+        {
+            return reducer.trivialReduceIsTrivial()
+                 ? new TrivialOneToOne<>(sources, reducer)
+                 : new OneToOne<>(sources, reducer);
+        }
+        
+        // 注1
+        return new ManyToOne<>(sources, comparator, reducer);
+    }
+```
+
+在下面的`注1`处
+```java
+        public ManyToOne(List<? extends Iterator<In>> iters, Comparator<In> comp, Reducer<In, Out> reducer)
+        {
+            super(iters, reducer);
+            this.queue = new PriorityQueue<>(Math.max(1, iters.size()));
+            for (Iterator<In> iter : iters)
+            {
+                Candidate<In> candidate = new Candidate<>(iter, comp);
+                
+                // 注1
+                if (!candidate.advance())
+                    // was empty
+                    continue;
+                this.queue.add(candidate);
+            }
+            this.candidates = new ArrayDeque<>(queue.size());
+        }
+```
+
+使用`MergeIterator`的`advance()`方法判断迭代器是否有下一个元素，如`注1`所示：
+
+```java
+       // MergeIterator.java
+       protected boolean advance()
+        {
+            // 注1
+            if (!iter.hasNext())
+                return false;
+            
+            item = iter.next();
+            return true;
+        }
+
+```
+
+之后进入QueryFilter的方法中，如`注1`、`注2`所示，在注2处进入`SimpleSliceReader`的`computeNext()`方法：
+
+```java
+   public static Iterator<Cell> gatherTombstones(final ColumnFamily returnCF, final Iterator<? extends OnDiskAtom> iter)
+    {
+        return new Iterator<Cell>()
+        {
+            private Cell next;
+
+            public boolean hasNext()
+            {
+                if (next != null)
+                    return true;
+                // 注1
+                getNext();
+                return next != null;
+            }
+
+            public Cell next()
+            {
+                if (next == null)
+                    getNext();
+
+                assert next != null;
+                Cell toReturn = next;
+                next = null;
+                return toReturn;
+            }
+
+            private void getNext()
+            {
+                // 注2
+                while (iter.hasNext())
+                {
+                    OnDiskAtom atom = iter.next();
+
+                    if (atom instanceof Cell)
+                    {
+                        next = (Cell)atom;
+                        break;
+                    }
+                    else
+                    {
+                        returnCF.addAtom(atom);
+                    }
+                }
+            }
+
+            public void remove()
+            {
+                throw new UnsupportedOperationException();
+            }
+        };
+    }
+
+```
+
+后续的执行过程如下，从`注3`处开始真正从IO输入流中读取`SSTable`文件的数据：
+
+```java
+    protected OnDiskAtom computeNext()
+    {
+        // 注1
+        if (!atomIterator.hasNext())
+            return endOfData();
+
+        OnDiskAtom column = atomIterator.next();
+        if (!finishColumn.isEmpty() && comparator.compare(column.name(), finishColumn) > 0)
+            return endOfData();
+
+        return column;
+    }
+    
+    public abstract class AbstractCell implements Cell
+{
+    public static Iterator<OnDiskAtom> onDiskIterator(final DataInput in,
+                                                      final ColumnSerializer.Flag flag,
+                                                      final int expireBefore,
+                                                      final Descriptor.Version version,
+                                                      final CellNameType type)
+    {
+        return new AbstractIterator<OnDiskAtom>()
+        {   // 注2
+            protected OnDiskAtom computeNext()
+            {
+                OnDiskAtom atom;
+                try
+                {
+                    // 注3
+                    atom = type.onDiskAtomSerializer().deserializeFromSSTable(in, flag, expireBefore, version);
+                }
+                catch (IOException e)
+                {
+                    throw new IOError(e);
+                }
+                if (atom == null)
+                    return endOfData();
+
+                return atom;
+            }
+        };
+    }
+    }
+```
+
+在下面的`注1`处获取的列名，比如：`age`，在`注2`处继续做反序列化的读取：
+
+```java
+        public OnDiskAtom deserializeFromSSTable(DataInput in, ColumnSerializer.Flag flag, int expireBefore, Descriptor.Version version) throws IOException
+        {
+           // 注1
+            Composite name = type.serializer().deserialize(in);
+            if (name.isEmpty())
+            {
+                // SSTableWriter.END_OF_ROW
+                return null;
+            }
+
+            int b = in.readUnsignedByte();
+            if ((b & ColumnSerializer.RANGE_TOMBSTONE_MASK) != 0)
+                return type.rangeTombstoneSerializer().deserializeBody(in, name, version);
+            else
+                // 注2
+                return type.columnSerializer().deserializeColumnBody(in, (CellName)name, b, flag, expireBefore);
+        }
+```
+
+在下面的`注1`处读取`timestamp`，这是Cassandra内置的一个属性，然后在`注2`处读取实际的值，并封装成`BufferCell`对象返回：
+
+```java
+    Cell deserializeColumnBody(DataInput in, CellName name, int mask, ColumnSerializer.Flag flag, int expireBefore) throws IOException
+    {
+        if ((mask & COUNTER_MASK) != 0)
+        {
+            long timestampOfLastDelete = in.readLong();
+            long ts = in.readLong();
+            ByteBuffer value = ByteBufferUtil.readWithLength(in);
+            return BufferCounterCell.create(name, value, ts, timestampOfLastDelete, flag);
+        }
+        else if ((mask & EXPIRATION_MASK) != 0)
+        {
+            int ttl = in.readInt();
+            int expiration = in.readInt();
+            long ts = in.readLong();
+            ByteBuffer value = ByteBufferUtil.readWithLength(in);
+            return BufferExpiringCell.create(name, value, ts, ttl, expiration, expireBefore, flag);
+        }
+        else
+        {
+            // 注1
+            long ts = in.readLong();
+            // 注2
+            ByteBuffer value = ByteBufferUtil.readWithLength(in);
+            return (mask & COUNTER_UPDATE_MASK) != 0
+                   ? new BufferCounterUpdateCell(name, value, ts)
+                   : ((mask & DELETION_MASK) == 0
+                      ? new BufferCell(name, value, ts)
+                      : new BufferDeletedCell(name, value, ts));
+        }
+    }
+
+```
+
+这个读取过程的线程栈如下所示：
+
+```
+Daemon Thread [SharedPool-Worker-1] (Suspended)	
+	ColumnSerializer.deserializeColumnBody(DataInput, CellName, int, ColumnSerializer$Flag, int) line: 136	
+	OnDiskAtom$Serializer.deserializeFromSSTable(DataInput, ColumnSerializer$Flag, int, Descriptor$Version) line: 86	
+	AbstractCell$1.computeNext() line: 52	
+	AbstractCell$1.computeNext() line: 1	
+	AbstractCell$1(AbstractIterator<T>).tryToComputeNext() line: 143	
+	AbstractCell$1(AbstractIterator<T>).hasNext() line: 138	
+	SimpleSliceReader.computeNext() line: 82	
+	SimpleSliceReader.computeNext() line: 1	
+	SimpleSliceReader(AbstractIterator<T>).tryToComputeNext() line: 143	
+	SimpleSliceReader(AbstractIterator<T>).hasNext() line: 138	
+	SSTableSliceIterator.hasNext() line: 82	
+	QueryFilter$2.getNext() line: 172	
+	QueryFilter$2.hasNext() line: 155	
+	MergeIterator$Candidate<In>.advance() line: 146	
+	MergeIterator$ManyToOne<In,Out>.<init>(List<Iterator<In>>, Comparator<In>, Reducer<In,Out>) line: 89	
+	MergeIterator<In,Out>.get(List<Iterator<In>>, Comparator<In>, Reducer<In,Out>) line: 48	
+	QueryFilter.collateColumns(ColumnFamily, List<Iterator<Cell>>, IDiskAtomFilter, int, long) line: 105	
+	QueryFilter.collateOnDiskAtom(ColumnFamily, List<Iterator<OnDiskAtom>>, IDiskAtomFilter, int, long) line: 81	
+	QueryFilter.collateOnDiskAtom(ColumnFamily, List<Iterator<OnDiskAtom>>, int) line: 69	
+	CollationController.collectAllData(boolean) line: 311	
+	CollationController.getTopLevelColumns(boolean) line: 63	
+	ColumnFamilyStore.getTopLevelColumns(QueryFilter, int) line: 1689	
+	ColumnFamilyStore.getColumnFamily(QueryFilter) line: 1535	
+	Keyspace.getRow(QueryFilter) line: 341	
+	SliceFromReadCommand.getRow(Keyspace) line: 59	
+	StorageProxy$LocalReadRunnable.runMayThrow() line: 1387	
+	StorageProxy$LocalReadRunnable(StorageProxy$DroppableRunnable).run() line: 2054	
+	Executors$RunnableAdapter<T>.call() line: 471	
+	AbstractTracingAwareExecutorService$FutureTask<T>.run() line: 162	
+	SEPWorker.run() line: 103	
+	Thread.run() line: 744	
+```
+
+## 小结
+
+从上面的过程来看，整个读取过程还是很复杂的，这还没有考虑其它复杂情况，比如没有where条件的情况、结果集超过1万条的情况、Memtable有数据的情况，也没有具体分析Bloom Filter、Key Cache、Row Cache的读取过程，更没有考虑跨节点时的读取情况、Read Repair的过程等，要想完全弄清楚还得花更多的时间。
