@@ -1,12 +1,12 @@
 ---
 layout: post
-title: 【译】可扩展互联网服务的设计和部署
+title: 可扩展互联网服务的设计和部署【译】
 categories: tech
 tags: 
 - architecture
 ---
 
-> 这篇译文源自当时还在微软`Windows Live Services Platform`部门的[James Hamilton](http://www.mvdirona.com/jrh/work/)的经典论文[On Designing and Deploying Internet-Scale Services](https://www.usenix.org/legacy/event/lisa07/tech/full_papers/hamilton/hamilton_html/)，现在是Amazon Web Services团队的成员之一，读了一遍感觉还有很多不够清晰，遂决定把它翻译成中文，以便更深入的了解。
+> 这篇译文源自当时还在微软`Windows Live Services Platform`部门的[James Hamilton](http://www.mvdirona.com/jrh/work/)的经典论文 [On Designing and Deploying Internet-Scale Services](https://www.usenix.org/legacy/event/lisa07/tech/full_papers/hamilton/hamilton_html/)，他现在是Amazon Web Services团队的成员之一，读了一遍感觉还有很多不够清晰，遂决定把它翻译成中文，以便更深入的了解。
 
 ## 概述
 
