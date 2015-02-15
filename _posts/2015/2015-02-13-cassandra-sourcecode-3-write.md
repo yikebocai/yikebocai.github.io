@@ -6,7 +6,7 @@ tags:
 - cassandra
 ---
 
-> 上一篇 [Cassandra源代码分析之二：读取](http://yikebocai.com/2015/01/cassandra-sourcecode-2-read/)分析了Cassandra的读取过程，这篇分析一下写入过程。同理，为了简单起见，只做简单的插入分析。
+> 上一篇 [Cassandra源代码分析之二：读取](http://yikebocai.com/2015/01/cassandra-sourcecode-2-read/) 分析了Cassandra的读取过程，这篇分析一下写入过程。同理，为了简单起见，只做简单的插入分析。
 
 
 
@@ -297,7 +297,7 @@ Thread [PERIODIC-COMMIT-LOG-SYNCER] (Suspended)
 	Thread.run() line: 744	
 ```
 
-CommitLog写入成功后，会将数据写入Memtable，这个过程就比较简单了，Memtable实际上是一个Map，如`注1`处所示：
+CommitLog写入成功后，会将数据写入Memtable，如`注1`处所示，它最终会写入到一个BTree的数据结构中：
 
 ```java
     public void apply(DecoratedKey key, ColumnFamily columnFamily, SecondaryIndexManager.Updater indexer,
@@ -313,8 +313,200 @@ CommitLog写入成功后，会将数据写入Memtable，这个过程就比较简
     }
 ```
 
-完成上述写入，实际上Cassandra就算完成写入的过程了，Client即可结束，它自己会根据策略（Memtable的大小和过期时间）来批量将数据刷到SSTable中。
+完整的调用栈如下：
+
+```
+Daemon Thread [SharedPool-Worker-1] (Suspended)	
+	BTree.update(Object[], Comparator<V>, Iterable<V>, int, boolean, UpdateFunction<V>) line: 186	
+	AtomicBTreeColumns.addAllWithSizeDelta(ColumnFamily, MemtableAllocator, OpOrder$Group, SecondaryIndexManager$Updater) line: 196	
+	Memtable.put(DecoratedKey, ColumnFamily, SecondaryIndexManager$Updater, OpOrder$Group, ReplayPosition) line: 194	
+	ColumnFamilyStore.apply(DecoratedKey, ColumnFamily, SecondaryIndexManager$Updater, OpOrder$Group, ReplayPosition) line: 1059	
+	Keyspace.apply(Mutation, boolean, boolean) line: 388	
+	Keyspace.apply(Mutation, boolean) line: 347	
+	Mutation.apply() line: 235	
+	StorageProxy$7.runMayThrow() line: 985	
+	StorageProxy$7(StorageProxy$LocalMutationRunnable).run() line: 2099	
+	Executors$RunnableAdapter<T>.call() line: 471	
+	AbstractTracingAwareExecutorService$FutureTask<T>.run() line: 162	
+	SEPWorker.run() line: 103	
+	Thread.run() line: 744	
+
+```
+
+
+
+完成上述写入，实际上Cassandra就算完成写入的过程了，Client即可结束。
 
 ## 写入SSTable
 
+从 [Cassandra的官方文档]() 得知，Cassandra在写入CommitLog和Memtable后就结束了，它自己会根据策略（Memtable的大小和过期时间）来批量将数据刷到SSTable中。那怎么才能找到这个写入的入口呢？看Memtable类里面的方法，发现了`isExpired()`这个方法，它会根据`memtable_flush_period_in_ms`这个配置参数来判断是否需要刷到SSTable：
+
+```java
+    /**
+     * @return true if this memtable is expired. Expiration time is determined by CF's memtable_flush_period_in_ms.
+     */
+    public boolean isExpired()
+    {
+        int period = cfs.metadata.getMemtableFlushPeriod();
+        return period > 0 && (System.nanoTime() - creationNano >= TimeUnit.MILLISECONDS.toNanos(period));
+    }
+```
+
+再搜索`isExpired()`这个方法是在哪里被调用的，找到`ColumnFamilyStore.scheduleFlush()`这个方法，在`注1`处获取当前的Memtable，并在`注2`处进行是否过期的判断，最后在`注3`处执行业务逻辑：
+
+```java
+    void scheduleFlush() {
+        int period = metadata.getMemtableFlushPeriod();
+        if (period > 0) {
+            logger.debug("scheduling flush in {} ms", period);
+            WrappedRunnable runnable = new WrappedRunnable() {
+
+                @Override
+                protected void runMayThrow() throws Exception {
+                    synchronized (data) {
+                        // 注1
+                        Memtable current = data.getView().getCurrentMemtable();
+                        // if we're not expired, we've been hit by a scheduled flush for an already flushed memtable, so
+                        // ignore
+                        // 注2
+                        if (current.isExpired()) {
+                            if (current.isClean()) {
+                                // if we're still clean, instead of swapping just reschedule a flush for later
+                                scheduleFlush();
+                            } else {
+                                // we'll be rescheduled by the constructor of the Memtable.
+                                // 注3
+                                forceFlush();
+                            }
+                        }
+                    }
+                }
+            };
+            StorageService.scheduledTasks.schedule(runnable, period, TimeUnit.MILLISECONDS);
+        }
+    }
+```
+
+上面的调用最后到`ColumnFamilyStore.switchMemtable()`方法，在这里会启动一个`Flush`的异步线程：
+
+```java
+    public ListenableFuture<?> switchMemtable() {
+        synchronized (data) {
+            logFlush();
+            Flush flush = new Flush(false);
+            flushExecutor.execute(flush);
+            ListenableFutureTask<?> task = ListenableFutureTask.create(flush.postFlush, null);
+            postFlushExecutor.submit(task);
+            return task;
+        }
+    }
+```
+
+
+Flush线程会再启动一个异步线程，它的完整调用栈如下：
+
+```
+Daemon Thread [MemtableFlushWriter:32] (Suspended)	
+	RandomAccessFile.write(byte[], int, int) line: 550	
+	CompressedSequentialWriter.flushData() line: 128	
+	CompressedSequentialWriter(SequentialWriter).flushInternal() line: 283	
+	CompressedSequentialWriter(SequentialWriter).syncInternal() line: 255	
+	CompressedSequentialWriter(SequentialWriter).close() line: 436	
+	CompressedSequentialWriter.close() line: 256	
+	SSTableWriter.close(long) line: 466	
+	SSTableWriter.closeAndOpenReader(long, long) line: 427	
+	SSTableWriter.closeAndOpenReader(long) line: 422	
+	SSTableWriter.closeAndOpenReader() line: 417	
+	Memtable$FlushRunnable.writeSortedContents(ReplayPosition, File) line: 359	
+	Memtable$FlushRunnable.runWith(File) line: 314	
+	Memtable$FlushRunnable(DiskAwareRunnable).runMayThrow() line: 48	
+	Memtable$FlushRunnable(WrappedRunnable).run() line: 28	
+	MoreExecutors$SameThreadExecutorService.execute(Runnable) line: 297	
+	ColumnFamilyStore$Flush.run() line: 978	
+	JMXEnabledThreadPoolExecutor(ThreadPoolExecutor).runWorker(ThreadPoolExecutor$Worker) line: 1145	
+	ThreadPoolExecutor$Worker.run() line: 615	
+	Thread.run() line: 744	
+
+```
+
+上面`period`获取的是Memtable多长时间需要将数据刷到SSTable的时间间隔，这个值有配置参数`memtable_flush_period_in_ms`决定，[官方文档中](http://www.datastax.com/documentation/cql/3.1/cql/cql_reference/tabProp.html#tabProp__table_cql_properties) 说是默认值为`0`，但你Debug并查看源代码会发现，这个值实际上是`3600s`：
+
+```java
+    private static CFMetaData newSystemMetadata(String keyspace, String cfName, String comment, CellNameType comparator)
+    {
+        return new CFMetaData(keyspace, cfName, ColumnFamilyType.Standard, comparator, generateLegacyCfId(keyspace, cfName))
+                             .comment(comment)
+                             .readRepairChance(0)
+                             .dcLocalReadRepairChance(0)
+                             .gcGraceSeconds(0)
+                             // 注1
+                             .memtableFlushPeriod(3600 * 1000);
+    }
+```
+
+这个值在`conf/cassandra.yaml`中是没有的，如果你自己试图增加一行到这个文件中，想把它设置成3分钟，会发现Cassandra在启动时就会报错，说是YAML文件不合法：
+
+```
+memtable_flush_period_in_ms: 3000
+```
+
+它实际在加载时会检测配置文件中的键名是否是`Config`类的一个属性，如果不是就会报错，因此通过上面修改配置项的方式是不行的。只能通过修改源代码来实现，否则每次Debug要等1个小时实在是受不了。
+
+到这里原来以为已找到了从Memtable刷到SSTable的源头，但是Debug时发现，只有`system.sstable_activity`表的数据，会定期刷到磁盘，而不见我们测试的`forseti.mytab`的数据。难道业务表的数据不是通过定期刷盘的方式持久化吗？业务表的数据写入SSTable实际上有两种触发方式，一种是在启动时检查如果没有刷到SSTable，会立即刷盘。另外一种是当Memtable中的数据超过最大值时，也会刷盘。这个最大值看文档是由`memtable_total_space_in_mb`这个参数决定，我们先试图修改这个参数，`cassandra.yaml`文件中找到如下内容，把这行的注释去掉并把值修改为`1`：
+
+```
+# Total memory to use for memtables.  Cassandra will flush the largest
+# memtable when this much memory is used.
+# If omitted, Cassandra will set it to 1/4 of the heap.
+# memtable_total_space_in_mb: 2048
+```
+
+结果启动后还是报YAML文件语法错误，再到Config类中发现没有这个属性，倒是看到`memtable_heap_space_in_mb`这个属性，遂决定把这个属性添加进去试试看，结果可以正常启动：
+
+```
+memtable_heap_space_in_mb: 1
+```
+
+为了测试是不是根据大小来决定是否刷盘，Client的测试例子循环插入的条数从1开始到100再到1000，此时发现在这里可以看到mytab的写入了，说明确实是根据大小写刷盘的：
+
+```
+SSTableWriter.close(long) line: 464	
+```
+
+但它到底是从哪里触发的呢？我使用Eclipse的`Open Call Hierarchy`功能年看Flush这个类都在哪里被调用了，最终确认上一个调用栈是从`MemtableCleanerThread`类开始的：
+
+```
+ Daemon Thread [SlabPoolCleaner] (Suspended (breakpoint at line 772 in ColumnFamilyStore))	
+	owns: DataTracker  (id=12009)	
+	ColumnFamilyStore.switchMemtable() line: 772	
+	ColumnFamilyStore.switchMemtableIfCurrent(Memtable) line: 756	
+	ColumnFamilyStore$FlushLargestColumnFamily.run() line: 1038	
+	MemtableCleanerThread<P>.run() line: 71
+```	
+
+它是一个死循环，不停的检测，并在注1处调用：
+
+```java
+    @Override
+    public void run()
+    {
+        while (true)
+        {
+            while (!needsCleaning())
+            {
+                final WaitQueue.Signal signal = wait.register();
+                if (!needsCleaning())
+                    signal.awaitUninterruptibly();
+                else
+                    signal.cancel();
+            }
+
+            // 注1
+            cleaner.run();
+        }
+    }
+```
+
 ## 小结
+
+至此，已比较清楚了插入时先写CommitLog再写入Memtable，最后从Memtable刷到SSTable的全过程。
