@@ -6,7 +6,7 @@ tags:
 - cassandra
 ---
 
-> 距第一篇源代码分析文章 [Cassandra源代码学习之一：Eclipse环境准备和数据更新](http://yikebocai.com/2014/07/cassandra-sourcecode-1-env-update/) 时间有点久了，终于重新续接上了，希望后面能有时间计划的系列内容研究完毕都形成文章。
+> 距第一篇源代码分析文章 [Cassandra源代码学习之一：Eclipse环境准备](http://yikebocai.com/2014/07/cassandra-sourcecode-1-env-update/) 时间有点久了，终于重新续接上了，希望后面能有时间计划的系列内容研究完毕都形成文章。
 
 和Cassandra的交互有两种方法，一种是使用自带的`cqlsh`命令行工具，它是通过[Thrift](https://thrift.apache.org)接口和Cassandra进行通讯，它本身是用Python写的，而Cassandra是Java开发的，Thrift是一种支持跨平台的通用接口。第二种是通过不同开发语言的Driver来进行交互，比如像[Java版](https://github.com/datastax/java-driver)的，这种更适合在应用程序中的访问，它是基本`CQL3`这种二进制协议的，性能会更好，但前者使用者来说更友好。
 
