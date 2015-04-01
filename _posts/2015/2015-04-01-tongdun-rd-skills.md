@@ -1,3 +1,9 @@
+---
+layout: post
+title: 同盾研发技能表
+categories: tech
+---
+
 > v0.91, 2015/4/1
 
 ## 软性技能
