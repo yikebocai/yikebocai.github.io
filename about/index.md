@@ -7,7 +7,8 @@ comments: yes
 
 个人兴趣爱好包括户外爬山，自行车等，曾参与组织过名燥杭城一时的铁杆骑行队，13年完成了我许久的梦想之一环台湾岛骑行，期待用车轮探寻更多的地方。
 
-目前供职于专业提供风险控制与反欺诈服务的创业公司[同盾科技](http://fraudmetrix.cn)。
+目前就职于专业提供风险控制与反欺诈服务的创业公司[同盾科技](http://tongdun.cn)，负责核心产品和基础技术工作，如果你对这一行业感兴趣也可以直接联系。
 
  GitHub:[yikebocai](http://github.com/yikebocai)
  微博:[@波菜](http://weibo.com/simbo)
+ Email:31647584@QQ.com
